@@ -23,7 +23,6 @@ class MultiHeadAttention(hk.MultiHeadAttention):
         self,
         num_heads: int,
         key_size: int,
-        use_rotary_embedding: bool = False,
         add_bias_kv: bool = False,
         value_size: Optional[int] = None,
         model_size: Optional[int] = None,
@@ -33,8 +32,6 @@ class MultiHeadAttention(hk.MultiHeadAttention):
         Args:
             num_heads: Number of independent attention heads.
             key_size: The size of keys and queries used for attention.
-            use_rotary_embedding: If true, adds rotary embeddings to the key and query
-                heads (see RoFormer https://arxiv.org/pdf/2104.09864.pdf).
             add_bias_kv: If True, appends biases to key and query heads, used in ESM
                 model (https://www.biorxiv.org/content/10.1101/622803v4.full.pdf).
             value_size: Optional size of the value projection. If None, defaults
@@ -63,7 +60,6 @@ class MultiHeadAttention(hk.MultiHeadAttention):
         else:
             self._bias_k = None
             self._bias_v = None
-        self._use_rotary_embedding = use_rotary_embedding
 
     @hk.transparent
     def attention_weights(
@@ -210,7 +206,6 @@ class SelfAttentionBlock(hk.Module):
         embed_dim: int,
         ffn_embed_dim: int,
         key_size: Optional[int] = None,
-        use_rotary_embedding: bool = False,
         add_bias_kv: bool = False,
         name: Optional[str] = None,
     ):
@@ -243,7 +238,6 @@ class SelfAttentionBlock(hk.Module):
             key_size=key_size,
             model_size=embed_dim,
             add_bias_kv=add_bias_kv,
-            use_rotary_embedding=use_rotary_embedding,
             name="self_attention",
         )
 

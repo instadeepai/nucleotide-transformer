@@ -22,7 +22,8 @@ setup(
         "absl-py>=1.0.0",
         "jax>=0.3.25",
         "jaxlib>=0.3.25",  # necessary to build the doc atm
-        "dm-haiku>=0.0.9" "numpy>=1.23.5",
+        "dm-haiku>=0.0.9",
+        "numpy>=1.23.5",
     ],
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",

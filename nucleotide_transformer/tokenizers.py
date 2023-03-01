@@ -20,35 +20,6 @@ def _compute_k_mers(k: int) -> List[str]:
     return ["".join(elt) for elt in product(NUCLEOTIDES, repeat=k)]
 
 
-def compute_dcnuc_tokens_to_ids(k_mers: int) -> Tuple[Dict[str, int], List[str]]:
-    """Compute the tokens to ids mapping that correspond to the tokenizer used to train
-    the DCNUC pretrained models.
-
-    Args:
-        k_mers (int): k used for the kmers.
-
-    Returns:
-        Dict[str, int]: Corresponding tokens to ids mapping.
-    """
-    # Get tokenizer
-    kmers_tokens = _compute_k_mers(k=k_mers)
-    standard_tokens = kmers_tokens + NUCLEOTIDES + EXTRA_NUCLEOTIDES
-
-    unk_token = "<unk>"
-    pad_token = "<pad>"
-    mask_token = "<mask>"
-    class_token = "<cls>"
-    eos_token = "<eos>"
-    bos_token = "<bos>"
-
-    special_tokens_1 = [unk_token, pad_token, mask_token, class_token]
-    special_tokens_2 = [eos_token, bos_token]
-    all_tokens = special_tokens_1 + standard_tokens + special_tokens_2
-    tokens_to_ids = {tok: i for i, tok in enumerate(all_tokens)}
-
-    return tokens_to_ids, standard_tokens
-
-
 class StandardTokenizer:
     """
     Simple tokenizer that extracts pre-defined tokens from sequences using regex.

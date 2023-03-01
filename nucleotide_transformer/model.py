@@ -1,5 +1,4 @@
-"""Implementation of ESM in Jax. Similar to the standard transformer class with some
-custom layers."""
+"""Implementation of ESM in Jax."""
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple
 

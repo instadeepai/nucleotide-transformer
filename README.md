@@ -72,7 +72,7 @@ print(outs["embeddings_20"].shape)
 ```
 Supported model names are **500M_human_ref**, **500M_1000G**, **2B5_1000G** and **2B5_multi_species**.
 
-You can also run our models simply in google colab [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/instadeepai/nucleotide-transformer/blob/main/examples/inference.ipynb)
+You can also run our models and find more example code in google colab [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/instadeepai/nucleotide-transformer/blob/main/examples/inference.ipynb)
 
 The code runs both on GPU and TPU thanks to Jax!
 

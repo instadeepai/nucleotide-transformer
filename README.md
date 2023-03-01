@@ -4,7 +4,8 @@
 [![Jax Version](https://img.shields.io/badge/jax-0.3.25-informational)](https://jax.readthedocs.io/en/latest/)
 [![license](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-blue.svg)](LICENSE)
 
-Welcome to the InstaDeep Github repository of the [Nucleotide Transformer: Building and Evaluating Robust Foundation Models for Human Genomics paper](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v1).
+Welcome to the InstaDeep Github repository of the [Nucleotide Transformer project](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v1).
+
 We are thrilled to open-source our work in collaboration with Nvidia and TUM and provide the community with access to the code and pre-trained weights for our four genomics language models.
 
 ## Description 🧬
@@ -75,14 +76,29 @@ You can also run our models simply in google colab [![Open All Collab](https://c
 
 The code runs both on GPU and TPU thanks to Jax!
 
-## Acknowledgments
+## Acknowledgments 🙏
 
+We thank Maˇsa Roller, as well as members of the Rostlab, particularly Tobias Olenyi, Ivan Koludarov,
+and Burkhard Rost for constructive discussions that helped identify interesting research directions.
+Furthermore, we extend gratitude to all those who deposit experimental data in public databases, to
+those who maintain these databases, and those who make analytical and predictive methods freely
+available. We also thank the Jax development team.
 
-## Contact
+## Citing the Nucleotide Transformer 📚
+
+If you find this repository useful in your work, please add the following citation to our [associated paper](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v1):
+
+```bibtex
+@article{dalla2023nucleotide,
+  title={The Nucleotide Transformer: Building and Evaluating Robust Foundation Models for Human Genomics},
+  author={Dalla-Torre, Hugo and Gonzalez, Liam and Mendoza Revilla, Javier and Lopez Carranza, Nicolas and Henryk Grywaczewski, Adam and Oteri, Francesco and Dallago, Christian and Trop, Evan and Sirelkhatim, Hassan and Richard, Guillaume and others},
+  journal={bioRxiv},
+  pages={2023--01},
+  year={2023},
+  publisher={Cold Spring Harbor Laboratory}
+}
+```
 
 If you have any questions or feedback on the code and models, please feel free to reach out to us.
 
 Thank you for your interest in our work!
-
-Best regards,
-InstaDeep

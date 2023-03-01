@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import boto3
 import haiku as hk
@@ -126,7 +126,7 @@ def get_pretrained_model(
     model_name: str,
     mixed_precision: bool = False,
     embeddings_layers_to_save: Tuple[int, ...] = (),
-    attention_maps_to_save: Optional[List[Tuple[int, int]]] = None,
+    attention_maps_to_save: Optional[Tuple[Tuple[int, int], ...]] = None,
     max_positions: int = 1024,
 ) -> Tuple[
     hk.Params, Callable, FixedSizeNucleotidesKmersTokenizer, ESMTransformerConfig
@@ -162,7 +162,8 @@ def get_pretrained_model(
         )
     """
     if attention_maps_to_save is None:
-        attention_maps_to_save = []
+        attention_maps_to_save = ()
+
     supported_models = [
         "500M_human_ref",
         "500M_1000G",

@@ -1,6 +1,6 @@
 """Implementation of ESM in Jax. Similar to the standard transformer class with some
 custom layers."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple
 
 import haiku as hk
@@ -109,7 +109,7 @@ class ESMTransformerConfig:
 
     # return
     embeddings_layers_to_save: Tuple[int, ...] = ()
-    attention_maps_to_save: List[Tuple[int, int]] = field(default_factory=list)
+    attention_maps_to_save: Tuple[Tuple[int, int], ...] = ()
 
     def __post_init__(self) -> None:
         """

@@ -146,7 +146,7 @@ class ESMTransformerConfig:
 
 class ESMTransformer(hk.Module):
     """
-    Jax implementation of ESM models. Covers ESM1, ESM1-b and ESM2 models.
+    Jax implementation of ESM models.
     """
 
     def __init__(

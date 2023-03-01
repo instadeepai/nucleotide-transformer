@@ -68,14 +68,7 @@ def download_ckpt_and_hyperparams(model_name: str) -> Tuple[hk.Params, Dict[str,
     # Get directories
     save_dir = os.path.join(_get_dir(), model_name)
 
-    epoch_nums = {
-        "500M_human_ref": 99,
-        "500M_1000G": 51,
-        "2B5_1000G": 230,
-        "2B5_multi_species": 68,
-    }
-    epoch_num = epoch_nums[model_name]
-    params_save_dir = os.path.join(save_dir, f"epoch{epoch_num}.joblib")
+    params_save_dir = os.path.join(save_dir, "ckpt.joblib")
     hyperparams_save_dir = os.path.join(save_dir, "hyperparams.json")
 
     if os.path.exists(hyperparams_save_dir) and os.path.exists(params_save_dir):
@@ -97,8 +90,8 @@ def download_ckpt_and_hyperparams(model_name: str) -> Tuple[hk.Params, Dict[str,
         session = boto3.Session()
         s3_client = session.client(
             service_name="s3",
-            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            aws_access_key_id="BG39IQWKYHL08M02WQ55",
+            aws_secret_access_key="0iA69KYqGMwQf7t8F8HChXODLbZhgWmmcDL0bATw",
             endpoint_url=s3_endpoint,
         )
 
@@ -115,7 +108,7 @@ def download_ckpt_and_hyperparams(model_name: str) -> Tuple[hk.Params, Dict[str,
         download_from_s3_bucket(
             s3_client=s3_client,
             bucket=bucket,
-            key=f"checkpoints/{model_name}/epoch{epoch_num}.joblib",
+            key=f"checkpoints/{model_name}/ckpt.joblib",
             filename=params_save_dir,
         )
 
@@ -219,10 +212,11 @@ def get_pretrained_model(
     )
 
     # NOTE: module names are changed here, to validate !
-    parameters = rename_modules(parameters, model_name)
+    full_model_name = "nucleotide_transformer" + model_name
+    parameters = rename_modules(parameters, full_model_name)
 
     forward_fn = build_esm_fn(
-        model_config=config, mixed_precision=mixed_precision, model_name=model_name
+        model_config=config, mixed_precision=mixed_precision, model_name=full_model_name
     )
 
     return parameters, forward_fn, tokenizer, config

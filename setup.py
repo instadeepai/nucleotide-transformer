@@ -14,6 +14,7 @@ setup(
     url="https://github.com/instadeepai/nucleotide-transformer",
     license="CC BY-NC-SA 4.0",
     author="InstaDeep Ltd",
+    python_requires=">=3.8",
     description="The Nucleotide Transformer: Building and Evaluating "
     "Robust Foundation Models for Human Genomics ",
     long_description=long_description,

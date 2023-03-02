@@ -10,7 +10,7 @@ We are thrilled to open-source our work in collaboration with Nvidia and TUM and
 
 ## Description 🧬
 
-we present a comprehensive examination of foundational language models that were pre-trained on DNA sequences from whole-genomes.
+We present a comprehensive examination of foundational language models that were pre-trained on DNA sequences from whole-genomes.
 Compared to other approaches, our models do not only integrate information from single reference genomes,
 but leverage DNA sequences from over 3,200 diverse human genomes, as well as 850 genomes from a wide range of species,
 including model and non-model organisms. Through robust and extensive evaluation,
@@ -70,7 +70,11 @@ outs = forward_fn.apply(parameters, random_key, tokens)
 # Get embeddings at layer 20
 print(outs["embeddings_20"].shape)
 ```
-Supported model names are **500M_human_ref**, **500M_1000G**, **2B5_1000G** and **2B5_multi_species**.
+Supported model names are:
+- **500M_human_ref** 
+- **500M_1000G** 
+- **2B5_1000G** 
+- **2B5_multi_species**
 
 You can also run our models and find more example code in google colab [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/instadeepai/nucleotide-transformer/blob/main/examples/inference.ipynb)
 

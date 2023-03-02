@@ -132,7 +132,7 @@ def get_pretrained_model(
     hk.Params, Callable, FixedSizeNucleotidesKmersTokenizer, ESMTransformerConfig
 ]:
     """
-    Create a Haiku DeepChain Nucleotide
+    Create a Haiku Nucleotide Transformer
     model by downloading pre-trained weights and hyperparameters.
     DeepChain Nucleotide Models have ESM-like architectures.
 

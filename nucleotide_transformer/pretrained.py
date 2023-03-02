@@ -134,12 +134,12 @@ def get_pretrained_model(
     """
     Create a Haiku Nucleotide Transformer
     model by downloading pre-trained weights and hyperparameters.
-    DeepChain Nucleotide Models have ESM-like architectures.
+    Nucleotide Transformer Models have ESM-like architectures.
 
     Args:
         model_name: Name of the model.
         mixed_precision: Whether to use mixed precision.
-        embedding_layers_to_save: Intermediate embddings to return in the output.
+        embeddings_layers_to_save: Intermediate embeddings to return in the output.
         attention_maps_to_save: Intermediate attention maps to return in the output.
         max_positions: Maximum length of a token (for padding).
 

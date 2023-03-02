@@ -39,7 +39,7 @@ repos:
       - id: codespell
         name: codespell
         description: Checks for common misspellings in text files.
-        entry: codespell --skip="*.js,*.html,*.css, *.svg" --ignore-words=.codespell-ignore.txt
+        entry: codespell --skip="*.js,*.html,*.css, *.svg"
         language: python
         types: [text]
   - repo: https://github.com/pre-commit/pre-commit-hooks

@@ -38,11 +38,9 @@ def build_padding_attention_mask(tokens: Tokens, pad_token_id: int) -> Attention
 
 
 @dataclass
-class ESMTransformerConfig:
+class NucleotideTransformerConfig:
     """
-    Parameters to initialize an ESM model. While the ESM architecture is an encoder-only
-    model, different choices have been made for each version and this configuration aims
-    to cover most of them.
+    Parameters to initialize a Nucleotide Transformer model.
 
     Args:
         alphabet_size: Token vocabulary.
@@ -114,18 +112,18 @@ class ESMTransformerConfig:
             self.key_size = self.embed_dim // self.attention_heads
 
 
-class ESMTransformer(hk.Module):
+class NucleotideTransformer(hk.Module):
     """
-    Jax implementation of ESM models.
+    Jax implementation of Nucleotide Transformer models.
     """
 
     def __init__(
         self,
-        config: ESMTransformerConfig,
+        config: NucleotideTransformerConfig,
         name: Optional[str] = None,
     ):
         """
-        Initialize an ESM model.
+        Initialize a Nucleotide Transformer model.
 
         Args:
             config: Dataclass containing model hyperparameters.
@@ -304,8 +302,8 @@ class ESMTransformer(hk.Module):
         return outs  # type: ignore
 
 
-def build_esm_fn(
-    model_config: ESMTransformerConfig,
+def build_nucleotide_transformer_fn(
+    model_config: NucleotideTransformerConfig,
     mixed_precision: bool = False,
     model_name: Optional[str] = None,
 ) -> Callable:
@@ -318,7 +316,7 @@ def build_esm_fn(
         model_name: Model's name.
 
     Returns:
-        ESM model forward function.
+        Nucleotide Transformer model forward function.
     """
     if mixed_precision:
         # Use mixed precision (only support A100 GPU and TPU for now)
@@ -326,23 +324,23 @@ def build_esm_fn(
         full = jnp.float32
 
         policy = jmp.Policy(compute_dtype=half, param_dtype=full, output_dtype=full)
-        hk.mixed_precision.set_policy(ESMTransformer, policy)
+        hk.mixed_precision.set_policy(NucleotideTransformer, policy)
 
         # Remove it in batch norm to avoid instabilities
         policy = jmp.Policy(compute_dtype=full, param_dtype=full, output_dtype=half)
         hk.mixed_precision.set_policy(hk.BatchNorm, policy)
         hk.mixed_precision.set_policy(hk.LayerNorm, policy)
 
-    def esm_fn(
+    def nucleotide_transformer_fn(
         tokens: Tokens, attention_mask: Optional[AttentionMask] = None
     ) -> TransformerOutput:
         """Forward pass."""
         # Run the encoder over the inputs.
-        encoder = ESMTransformer(config=model_config, name=model_name)
+        encoder = NucleotideTransformer(config=model_config, name=model_name)
         outs = encoder(
             tokens=tokens,
             attention_mask=attention_mask,
         )
         return outs
 
-    return esm_fn
+    return nucleotide_transformer_fn

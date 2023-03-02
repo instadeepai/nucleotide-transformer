@@ -7,7 +7,10 @@ import haiku as hk
 import joblib
 import tqdm
 
-from nucleotide_transformer.model import ESMTransformerConfig, build_esm_fn
+from nucleotide_transformer.model import (
+    NucleotideTransformerConfig,
+    build_nucleotide_transformer_fn,
+)
 from nucleotide_transformer.tokenizers import FixedSizeNucleotidesKmersTokenizer
 
 ENV_XDG_CACHE_HOME = "XDG_CACHE_HOME"
@@ -129,7 +132,7 @@ def get_pretrained_model(
     attention_maps_to_save: Optional[Tuple[Tuple[int, int], ...]] = None,
     max_positions: int = 1024,
 ) -> Tuple[
-    hk.Params, Callable, FixedSizeNucleotidesKmersTokenizer, ESMTransformerConfig
+    hk.Params, Callable, FixedSizeNucleotidesKmersTokenizer, NucleotideTransformerConfig
 ]:
     """
     Create a Haiku Nucleotide Transformer
@@ -186,7 +189,7 @@ def get_pretrained_model(
     )
 
     # Get config
-    config = ESMTransformerConfig(
+    config = NucleotideTransformerConfig(
         alphabet_size=len(tokenizer.vocabulary) - 2,
         pad_token_id=tokenizer.pad_token_id,
         mask_token_id=tokenizer.mask_token_id,
@@ -212,7 +215,7 @@ def get_pretrained_model(
     full_model_name = "nucleotide_transformer" + model_name
     parameters = rename_modules(parameters, full_model_name)
 
-    forward_fn = build_esm_fn(
+    forward_fn = build_nucleotide_transformer_fn(
         model_config=config, mixed_precision=mixed_precision, model_name=full_model_name
     )
 
@@ -221,7 +224,7 @@ def get_pretrained_model(
 
 def rename_modules(parameters: hk.Params, model_name: str) -> hk.Params:
     """
-    Adjusts the names of the modules from checkpoints to ESMTransformer.
+    Adjusts the names of the modules from checkpoints to NucleotideTransformer.
 
     Args:
         parameters: Parameters loaded from .joblib archive.

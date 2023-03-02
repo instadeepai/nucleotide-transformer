@@ -24,6 +24,7 @@ setup(
         "jaxlib>=0.3.25",  # necessary to build the doc atm
         "dm-haiku>=0.0.9",
         "numpy>=1.23.5",
+        "boto3" # was missing, what version is necessary
     ],
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",

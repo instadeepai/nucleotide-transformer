@@ -21,10 +21,14 @@ setup(
     install_requires=[
         "absl-py>=1.0.0",
         "jax>=0.3.25",
-        "jaxlib>=0.3.25",  # necessary to build the doc atm
+        "jaxlib>=0.3.25",
         "dm-haiku>=0.0.9",
         "numpy>=1.23.5",
-        "boto3" # was missing, what version is necessary
+        "boto3>=1.24.28",
+        "typing_extensions>=3.10.0",
+        "joblib>=1.2.0",
+        "tqdm>=4.56.0",
+        "regex>=2022.1.18",
     ],
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",

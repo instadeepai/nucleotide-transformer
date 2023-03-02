@@ -8,10 +8,8 @@ import jmp
 
 from nucleotide_transformer.layers import (
     ESMLearnedPositionalEmbeddings,
-    ESMSinusoidalPositionalEmbedding,
     RobertaLMHead,
     SelfAttentionBlock,
-    SimpleLMHead,
     TokensDropout,
 )
 from nucleotide_transformer.types import (
@@ -67,11 +65,6 @@ class ESMTransformerConfig:
         embed_dim: Embedding dimension.
         ffn_embed_dim: Feed forward embedding dimension.
         num_layers: Number of attention blocks.
-        positional_embedding: Type of positional embedding to use before the first
-            attention layer. Options: "learned", "sinusoidal" or None.
-        lm_head: type of language model head. Options: "simple", "roberta" or None.
-        add_bias_kv: Add bias in attention layer.
-        mask_before_attention: Use mask before attention layers (for EMS1b and ESM2).
         token_dropout: Token dropout.
         masking_ratio: Masking ratio (used if token dropout is enabled).
         masking_prob: Masking probability (used if token dropout is enabled).
@@ -93,10 +86,6 @@ class ESMTransformerConfig:
     embed_dim: int = 1280
     ffn_embed_dim: int = 5120
     num_layers: int = 24
-    positional_embedding: Optional[str] = "learned"
-    lm_head: Optional[str] = "simple"
-    add_bias_kv: bool = False
-    mask_before_attention: bool = False
 
     # dropout
     token_dropout: bool = False
@@ -123,24 +112,6 @@ class ESMTransformerConfig:
                     f"{self.attention_heads}."
                 )
             self.key_size = self.embed_dim // self.attention_heads
-        if self.positional_embedding is not None:
-            if type(self.positional_embedding) != str:
-                raise TypeError
-
-            if self.positional_embedding not in ["learned", "sinusoidal"]:
-                raise ValueError(
-                    "The positional_embedding argument should either be None,"
-                    "`learned` or `sinusoidal`."
-                )
-        if self.lm_head is not None:
-            if type(self.lm_head) != str:
-                raise TypeError
-
-            if self.lm_head not in ["simple", "roberta"]:
-                raise ValueError(
-                    "The lm_head argument should either be None,"
-                    "`simple` or `roberta`."
-                )
 
 
 class ESMTransformer(hk.Module):
@@ -166,30 +137,15 @@ class ESMTransformer(hk.Module):
 
         self._embed_layer = hk.Embed(self._config.alphabet_size, self._config.embed_dim)
 
-        if config.positional_embedding == "learned":
-            self._pos_embed_layer = ESMLearnedPositionalEmbeddings(
-                config.max_positions, config.embed_dim, config.pad_token_id
-            )
-        elif config.positional_embedding == "sinusoidal":
-            self._pos_embed_layer = ESMSinusoidalPositionalEmbedding(
-                config.embed_dim, config.pad_token_id
-            )
+        self._pos_embed_layer = ESMLearnedPositionalEmbeddings(
+            config.max_positions, config.embed_dim, config.pad_token_id
+        )
 
-        if config.lm_head is None:
-            self._lm_head = config.lm_head
-
-        elif config.lm_head == "roberta":
-            self._lm_head = RobertaLMHead(
-                embed_dim=self._config.embed_dim,
-                alphabet_size=self._config.alphabet_size,
-                name="roberta_lm_head",
-            )
-
-        elif config.lm_head == "simple":
-            self._lm_head = SimpleLMHead(
-                embed_dim=self._config.embed_dim,
-                alphabet_size=self._config.alphabet_size,
-            )
+        self._lm_head = RobertaLMHead(
+            embed_dim=self._config.embed_dim,
+            alphabet_size=self._config.alphabet_size,
+            name="roberta_lm_head",
+        )
 
         if self._config.emb_layer_norm_before:
             self.emb_ln_before = hk.LayerNorm(
@@ -279,7 +235,6 @@ class ESMTransformer(hk.Module):
             embed_dim=self._config.embed_dim,
             key_size=self._config.key_size,
             ffn_embed_dim=self._config.ffn_embed_dim,
-            add_bias_kv=self._config.add_bias_kv,
             name=f"attention_layer_{layer_idx}",
         )
 
@@ -317,8 +272,9 @@ class ESMTransformer(hk.Module):
 
         # RoBERTa's mask scaling factor
         x = self._config.embed_scale * x
-        if self._config.positional_embedding is not None:
-            x = x + self._pos_embed_layer(tokens)
+
+        # Positional Embedding
+        x = x + self._pos_embed_layer(tokens)
 
         if self._config.emb_layer_norm_before:
             x = self.emb_ln_before(x)
@@ -329,9 +285,6 @@ class ESMTransformer(hk.Module):
                 tokens=tokens, pad_token_id=self._config.pad_token_id
             )
 
-        # Mask before attention for models ESM1b and ESM2
-        if self._config.mask_before_attention:
-            x = x - jnp.where(attention_mask == 0, 1, 0)[:, 0, 0][..., None] * x
         # construct a tower of attention layers
         x, outs = self.apply_attention_blocks(
             x=x,
@@ -340,15 +293,10 @@ class ESMTransformer(hk.Module):
         )
 
         # Language Model Head
-        if self._lm_head:
-            lm_head_outs = self._lm_head(x)
-            outs["logits"] = lm_head_outs["logits"]
+        lm_head_outs = self._lm_head(x)
+        outs["logits"] = lm_head_outs["logits"]
 
-        if self._config.lm_head == "roberta":
-            embeddings = lm_head_outs["embeddings"]
-        else:
-            embeddings = x
-
+        embeddings = lm_head_outs["embeddings"]
         # Save final embeddings if needed
         if self._config.num_layers in self._config.embeddings_layers_to_save:
             outs[f"embeddings_{self._config.num_layers}"] = embeddings

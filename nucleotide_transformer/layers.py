@@ -23,7 +23,6 @@ class MultiHeadAttention(hk.MultiHeadAttention):
         self,
         num_heads: int,
         key_size: int,
-        add_bias_kv: bool = False,
         value_size: Optional[int] = None,
         model_size: Optional[int] = None,
         name: Optional[str] = None,
@@ -32,8 +31,6 @@ class MultiHeadAttention(hk.MultiHeadAttention):
         Args:
             num_heads: Number of independent attention heads.
             key_size: The size of keys and queries used for attention.
-            add_bias_kv: If True, appends biases to key and query heads, used in ESM
-                model (https://www.biorxiv.org/content/10.1101/622803v4.full.pdf).
             value_size: Optional size of the value projection. If None, defaults
                 to the key size.
             model_size: Optional size of the output embedding. If None, defaults
@@ -49,17 +46,6 @@ class MultiHeadAttention(hk.MultiHeadAttention):
             model_size=model_size,
             name=name,
         )
-
-        if add_bias_kv:
-            self._bias_k = hk.get_parameter(
-                "bias_k", [1, 1, self.num_heads, self.key_size], init=jnp.zeros
-            )
-            self._bias_v = hk.get_parameter(
-                "bias_v", [1, 1, self.num_heads, self.value_size], init=jnp.zeros
-            )
-        else:
-            self._bias_k = None
-            self._bias_v = None
 
     @hk.transparent
     def attention_weights(
@@ -82,20 +68,6 @@ class MultiHeadAttention(hk.MultiHeadAttention):
 
         query_heads = self._linear_projection_he_init(query, self.key_size, "query")
         key_heads = self._linear_projection_he_init(key, self.key_size, "key")
-
-        # Add bias for key (see ESM architecture)
-        if self._bias_k is not None:
-            batch_size = key_heads.shape[0]
-            attention_bias = jnp.tile(self._bias_k, (batch_size, 1, 1, 1))
-            key_heads = jnp.concatenate((key_heads, attention_bias), axis=1)
-            if attention_mask is not None:
-                attention_mask = jnp.concatenate(
-                    (
-                        attention_mask,
-                        jnp.ones(attention_mask.shape[:-1] + (1,), dtype=jnp.bool_),
-                    ),
-                    axis=-1,
-                )
 
         attention_logits = jnp.einsum("...thd,...Thd->...htT", query_heads, key_heads)
         sqrt_key_size = jnp.sqrt(self.key_size).astype(query.dtype)
@@ -131,11 +103,6 @@ class MultiHeadAttention(hk.MultiHeadAttention):
         b_init = initializers.VarianceScaling(2.0, "fan_in", "uniform")
 
         value_heads = self._linear_projection_he_init(value, self.value_size, "value")
-        if self._bias_v is not None:
-            batch_size = value_heads.shape[0]
-            attention_bias = jnp.tile(self._bias_v, (batch_size, 1, 1, 1))
-            value_heads = jnp.concatenate((value_heads, attention_bias), axis=1)
-
         attention = jnp.einsum("...htT,...Thd->...thd", attention_weights, value_heads)
 
         # Concatenate attention matrix of all heads into a single vector.
@@ -206,7 +173,6 @@ class SelfAttentionBlock(hk.Module):
         embed_dim: int,
         ffn_embed_dim: int,
         key_size: Optional[int] = None,
-        add_bias_kv: bool = False,
         name: Optional[str] = None,
     ):
         super().__init__(name=name)
@@ -237,7 +203,6 @@ class SelfAttentionBlock(hk.Module):
             num_heads=num_heads,
             key_size=key_size,
             model_size=embed_dim,
-            add_bias_kv=add_bias_kv,
             name="self_attention",
         )
 
@@ -311,36 +276,6 @@ class SelfAttentionBlock(hk.Module):
 
         output["embeddings"] = x
         return output  # type: ignore
-
-
-class SimpleLMHead(hk.Module):
-    """
-    Basic Language Model head. Transforms final attention block output
-    into a distribution over tokens at each sequence position.
-    """
-
-    def __init__(self, embed_dim: int, alphabet_size: int, name: Optional[str] = None):
-        """
-        Args:
-            embed_dim: Embedding dimension.
-            alphabet_size: Number of tokens in the alphabet.
-            name: Name of the layer. Defaults to None.
-        """
-        super().__init__(name=name)
-        self.embed_dim = embed_dim
-        self.alphabet_size = alphabet_size
-
-        # Define layers
-        w_init = initializers.VarianceScaling(2.0, "fan_in", "uniform")
-        b_init = initializers.VarianceScaling(2.0, "fan_in", "uniform")
-        self._final_fc = hk.Linear(
-            self.alphabet_size, w_init=w_init, b_init=b_init, name="lm_final_fc"
-        )
-
-    def __call__(self, x: jnp.ndarray) -> Dict[str, jnp.ndarray]:
-        # Compute logits
-        logits = self._final_fc(x)
-        return {"logits": logits}
 
 
 class RobertaLMHead(hk.Module):
@@ -457,64 +392,3 @@ class ESMLearnedPositionalEmbeddings(hk.Module):
         positions = jnp.cumsum(mask, axis=1) * mask + self.padding_idx
 
         return self._embed_layer(positions)
-
-
-class ESMSinusoidalPositionalEmbedding(hk.Module):
-    """
-    Sinusoidal embeddings to be added to token embeddings. Specific to ESM as it
-    is implemented by shifting the positions by 2 (1 + padding_idx).
-    """
-
-    def __init__(
-        self,
-        embed_dim: int,
-        padding_idx: int,
-        name: Optional[str] = None,
-    ):
-
-        super().__init__(name=name)
-        self.embed_dim = embed_dim
-        self.padding_idx = padding_idx
-
-    def __call__(self, tokens: jnp.ndarray) -> jnp.ndarray:
-        """
-        Create the sinusoidal positional embeddings
-        """
-
-        bsz, seq_len = tokens.shape
-        max_pos = self.padding_idx + 1 + seq_len
-        weights = self._get_embedding(max_pos)
-        positions = self._make_positions(tokens)
-
-        return weights[positions.reshape(-1), :].reshape(bsz, seq_len, -1)
-
-    @hk.transparent
-    def _make_positions(self, x: jnp.ndarray) -> jnp.ndarray:
-        mask = ~jnp.equal(x, self.padding_idx)
-        range_buf = (
-            jnp.broadcast_to(jnp.arange(x.shape[1]), x.shape) + self.padding_idx + 1
-        )
-        positions = jnp.broadcast_to(range_buf, x.shape)
-        return positions * mask + self.padding_idx * (1 - mask)
-
-    @hk.transparent
-    def _get_embedding(self, num_embeddings: int) -> jnp.ndarray:
-
-        half_dim = self.embed_dim // 2
-        emb = jnp.log(10000) / (half_dim - 1)
-        emb = jnp.exp(jnp.arange(half_dim, dtype=jnp.float32) * -emb)
-        emb = jnp.expand_dims(
-            jnp.arange(num_embeddings, dtype=jnp.float32), axis=1
-        ) * jnp.expand_dims(emb, 0)
-        emb = jnp.reshape(
-            jnp.concatenate([jnp.sin(emb), jnp.cos(emb)], axis=1), (num_embeddings, -1)
-        )
-
-        if self.embed_dim % 2 == 1:
-            # zero pad
-            emb = jnp.concatenate([emb, jnp.zeros((num_embeddings, 1))], axis=1)
-
-        if self.padding_idx is not None:
-            emb = emb.at[self.padding_idx, :].set(0)
-
-        return emb

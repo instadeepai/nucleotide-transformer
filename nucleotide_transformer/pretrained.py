@@ -199,10 +199,6 @@ def get_pretrained_model(
         embed_dim=hyperparams["embed_dim"],
         ffn_embed_dim=hyperparams["ffn_embed_dim"],
         num_layers=hyperparams["num_layers"],
-        positional_embedding="learned",
-        lm_head="roberta",
-        add_bias_kv=False,
-        mask_before_attention=False,
         # bert
         token_dropout=hyperparams["token_dropout"],
         masking_ratio=hyperparams["masking_ratio"],

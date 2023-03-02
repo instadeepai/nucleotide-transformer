@@ -54,9 +54,3 @@ repos:
     hooks:
       - id: pyupgrade
         args: [--py38-plus]
-  - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v2.1.0
-    hooks:
-      - id: conventional-pre-commit
-        stages: [commit-msg]
-        args: ["ci", "build", "docs", "feat", "fix", "perf", "refactor", "style", "test", "EXP"]

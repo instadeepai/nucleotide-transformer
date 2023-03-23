@@ -6,7 +6,7 @@
 
 Welcome to the InstaDeep Github repository of the [Nucleotide Transformer project](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v1).
 
-We are thrilled to open-source our work in collaboration with Nvidia and TUM and provide the community with access to the code and pre-trained weights for our four genomics language models.
+We are thrilled to open-source this work and provide the community with access to the code and pre-trained weights for four genomics language models. This project was a collaboration with Nvidia and TUM, and the models were trained on DGX A100 nodes on Cambridge-1.
 
 ## Description 🧬
 

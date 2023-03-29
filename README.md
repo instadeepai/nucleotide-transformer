@@ -4,7 +4,7 @@
 [![Jax Version](https://img.shields.io/badge/jax-0.3.25-informational)](https://jax.readthedocs.io/en/latest/)
 [![license](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-blue.svg)](LICENSE)
 
-Welcome to the InstaDeep Github repository of the [Nucleotide Transformer project](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v1).
+Welcome to the InstaDeep Github repository of the [Nucleotide Transformer project](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v2).
 
 We are thrilled to open-source this work and provide the community with access to the code and pre-trained weights for four genomics language models. This project was a collaboration with Nvidia and TUM, and the models were trained on DGX A100 nodes on Cambridge-1.
 
@@ -90,7 +90,7 @@ available. We also thank the Jax development team.
 
 ## Citing the Nucleotide Transformer 📚
 
-If you find this repository useful in your work, please add the following citation to our [associated paper](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v1):
+If you find this repository useful in your work, please add the following citation to our [associated paper](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v2):
 
 ```bibtex
 @article{dalla2023nucleotide,

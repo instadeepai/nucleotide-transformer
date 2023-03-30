@@ -82,7 +82,7 @@ The code runs both on GPU and TPU thanks to Jax!
 
 ## Acknowledgments 🙏
 
-We thank Maˇsa Roller, as well as members of the Rostlab, particularly Tobias Olenyi, Ivan Koludarov,
+We thank Maša Roller, as well as members of the Rostlab, particularly Tobias Olenyi, Ivan Koludarov,
 and Burkhard Rost for constructive discussions that helped identify interesting research directions.
 Furthermore, we extend gratitude to all those who deposit experimental data in public databases, to
 those who maintain these databases, and those who make analytical and predictive methods freely

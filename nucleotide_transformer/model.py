@@ -285,6 +285,15 @@ class NucleotideTransformer(hk.Module):
         # RoBERTa's mask scaling factor
         x = self._config.embed_scale * x
 
+        # Add check that the sequence fed into the transformer is not longer
+        # than the max positions used to instantiate the learned positional
+        # embeddings layer
+        assert tokens.shape[1] <= self._config.max_positions, (
+            "Inputs to the learned positional embeddings layer have a length "
+            f"{x.shape[1]} greater than the max positions used to instantiate "
+            f"it: {self._config.max_positions}"
+        )
+
         # Positional Embedding
         x = x + self._pos_embed_layer(tokens)
 

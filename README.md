@@ -80,6 +80,28 @@ You can also run our models and find more example code in google colab [![Open A
 
 The code runs both on GPU and TPU thanks to Jax!
 
+## Tokenization :abc:
+
+The models are trained on sequences of length up to 1000 tokens, including the 
+\<CLS> token prepended automatically to the beginning of the sequence. The tokenizer 
+starts tokenizing from left to right by grouping the letters "A", "C", "G" and "T" in
+6-mers. The "N" letter is chosen not to be grouped inside the k-mers, therefore 
+whenever the tokenizer encounters a "N", or if the number of nucleotides in the sequence
+is not a multiple of 6, it will tokenize the nucleotides without grouping them. Examples 
+are given below: 
+
+```python
+dna_sequence_1 = "ACGTGTACGTGCACGGACGACTAGTCAGCA" 
+tokenized_dna_sequence_1 = [<CLS>,<ACGTGT>,<ACGTGC>,<ACGGAC>,<GACTAG>,<TCAGCA>]
+
+dna_sequence_2 = "ACGTGTACNTGCACGGANCGACTAGTCTGA" 
+tokenized_dna_sequence_2 = [<CLS>,<ACGTGT>,<A>,<C>,<N>,<TGCACG>,<G>,<A>,<N>,<CGACTA>,<GTCTGA>]
+```
+
+All the transformers can therefore take sequences of up to 5994 nucleotides if there are
+no "N" inside. 
+
+
 ## Acknowledgments 🙏
 
 We thank Maša Roller, as well as members of the Rostlab, particularly Tobias Olenyi, Ivan Koludarov,

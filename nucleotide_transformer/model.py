@@ -88,7 +88,7 @@ class NucleotideTransformerConfig:
     pad_token_id: int
     mask_token_id: int
 
-    max_positions: int = 1024
+    max_positions: int = 1000
     embed_scale: float = 1.0
 
     # architecture

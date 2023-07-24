@@ -81,7 +81,7 @@ You can also run our models and find more example code in google colab [![Open A
 The code runs both on GPU and TPU thanks to Jax!
 
 ## Embeddings retrieval
-The transformer layers are 0-indexed, which means that calling `get_pretrained_model` with the arguments `model_name="500M_human_ref"` and `embeddings_layers_to_save=(0, 23,)` will result in extracting embeddings after the first and last transformer layer, since the 500M_human_ref model features 24 layers. For transformers using the Roberta LM head, it is common practice to also extract the final embeddings right after the head's first layer norm. In order to do this, one simply needs to modify the argument to `embeddings_layers_to_save=(0, 23, 24)`. 
+The transformer layers are 1-indexed, which means that calling `get_pretrained_model` with the arguments `model_name="500M_human_ref"` and `embeddings_layers_to_save=(1, 20,)` will result in extracting embeddings after the first and 20-th transformer layer. For transformers using the Roberta LM head, it is common practice to extract the final embeddings after the first layer norm of the LM head rather than after the last transformer block. Therefore, if `get_pretrained_model` is called with the following arguments `embeddings_layers_to_save=(24,)`, the embeddings will not be extracted after the final transformer layer but rather after the first layer norm of the LM head.
 
 ## Tokenization :abc:
 

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Implementation of the Nucleotide Transformer model in Jax."""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple
 
 import haiku as hk
@@ -98,6 +98,14 @@ class NucleotideTransformerConfig:
     embed_dim: int = 1280
     ffn_embed_dim: int = 5120
     num_layers: int = 24
+    positional_embedding: Optional[str] = "learned"
+    add_bias_kv: bool = False
+    add_bias_ffn: bool = True
+    use_rotary_embedding: bool = False
+    ffn_activation_name: str = "gelu-no-approx"
+    use_glu_in_ffn: bool = False
+    layer_norm_eps: float = 1e-5
+    pre_layer_norm: bool = True
 
     # dropout
     token_dropout: bool = False
@@ -109,7 +117,7 @@ class NucleotideTransformerConfig:
 
     # return
     embeddings_layers_to_save: Tuple[int, ...] = ()
-    attention_maps_to_save: Tuple[Tuple[int, int], ...] = ()
+    attention_maps_to_save: List[Tuple[int, int]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """
@@ -149,9 +157,10 @@ class NucleotideTransformer(hk.Module):
 
         self._embed_layer = hk.Embed(self._config.alphabet_size, self._config.embed_dim)
 
-        self._pos_embed_layer = ESMLearnedPositionalEmbeddings(
-            config.max_positions, config.embed_dim, config.pad_token_id
-        )
+        if config.positional_embedding == "learned":
+            self._pos_embed_layer = ESMLearnedPositionalEmbeddings(
+                config.max_positions, config.embed_dim, config.pad_token_id
+            )
 
         self._lm_head = RobertaLMHead(
             embed_dim=self._config.embed_dim,
@@ -224,13 +233,12 @@ class NucleotideTransformer(hk.Module):
             layers = [hk.remat(layer) for layer in layers]
         for layer_idx, layer in enumerate(layers):
             output = layer(
-                x=x,
-                attention_mask=attention_mask,
+                x=x, attention_mask=attention_mask, attention_weight_bias=None
             )
             x = output["embeddings"]
             # Save intermediate embeddings if needed
             if (layer_idx + 1) in self._config.embeddings_layers_to_save:
-                outs[f"embeddings_{(layer_idx+1)}"] = output["embeddings"]
+                outs[f"embeddings_{(layer_idx + 1)}"] = output["embeddings"]
             # Save intermediate attention maps if needed
             if (layer_idx + 1) in self._attention_layers_to_save:
                 for map_number in self._attention_maps_per_layer_to_save[layer_idx + 1]:
@@ -241,12 +249,18 @@ class NucleotideTransformer(hk.Module):
 
     @hk.transparent
     def _attention_block(self, layer_idx: int) -> SelfAttentionBlock:
-
         return SelfAttentionBlock(  # type: ignore
             num_heads=self._config.attention_heads,
             embed_dim=self._config.embed_dim,
             key_size=self._config.key_size,
             ffn_embed_dim=self._config.ffn_embed_dim,
+            add_bias_kv=self._config.add_bias_kv,
+            add_bias_fnn=self._config.add_bias_ffn,
+            ffn_activation_name=self._config.ffn_activation_name,
+            use_glu_in_ffn=self._config.use_glu_in_ffn,
+            use_rotary_embedding=self._config.use_rotary_embedding,
+            layer_norm_eps=self._config.layer_norm_eps,
+            pre_layer_norm=self._config.pre_layer_norm,
             name=f"attention_layer_{layer_idx}",
         )
 
@@ -285,17 +299,21 @@ class NucleotideTransformer(hk.Module):
         # RoBERTa's mask scaling factor
         x = self._config.embed_scale * x
 
-        # Add check that the sequence fed into the transformer is not longer
-        # than the max positions used to instantiate the learned positional
-        # embeddings layer
-        assert tokens.shape[1] <= self._config.max_positions, (
-            "Inputs to the learned positional embeddings layer have a length "
-            f"{x.shape[1]} greater than the max positions used to instantiate "
-            f"it: {self._config.max_positions}"
-        )
-
-        # Positional Embedding
-        x = x + self._pos_embed_layer(tokens)
+        if self._config.positional_embedding == "learned":
+            # Add check that the sequence fed into the transformer is not longer
+            # than the max positions used to instantiate the learned positional
+            # embeddings layer
+            max_length_authorized = (
+                self._pos_embed_layer._embed_layer.vocab_size
+                - self._pos_embed_layer.padding_idx
+                - 1
+            )
+            assert tokens.shape[1] <= max_length_authorized, (
+                "Inputs to the learned positional embeddings layer have a length "
+                f"{x.shape[1]} greater than the max positions used to instantiate "
+                f"it: {max_length_authorized}"
+            )
+            x = x + self._pos_embed_layer(tokens)
 
         if self._config.emb_layer_norm_before:
             x = self.emb_ln_before(x)
@@ -315,7 +333,8 @@ class NucleotideTransformer(hk.Module):
 
         # Language Model Head
         lm_head_outs = self._lm_head(x)
-        outs["logits"] = lm_head_outs["logits"]
+        sequence_mask = attention_mask[:, 0, :, 0][:, :, None]
+        outs["logits"] = jnp.where(sequence_mask, lm_head_outs["logits"], 0)
 
         embeddings = lm_head_outs["embeddings"]
         # Save final embeddings if needed
@@ -327,7 +346,9 @@ class NucleotideTransformer(hk.Module):
 
 def build_nucleotide_transformer_fn(
     model_config: NucleotideTransformerConfig,
-    mixed_precision: bool = False,
+    compute_dtype: jnp.dtype = jnp.float32,
+    param_dtype: jnp.dtype = jnp.float32,
+    output_dtype: jnp.dtype = jnp.float32,
     model_name: Optional[str] = None,
 ) -> Callable:
     """
@@ -335,24 +356,32 @@ def build_nucleotide_transformer_fn(
 
     Args:
         model_config: Model hyperparameters.
-        mixed_precision: Whether to use mixed precision computation.
+        compute_dtype: the type of the activations. fp16 runs faster and is lighter in
+            memory. bf16 handles better large int, and is hence more stable ( it avoids
+            float overflows ).
+        param_dtype: if compute_dtype is fp16, the model weights will be cast to fp16
+            during the forward pass anyway. So in inference mode ( not training mode ),
+            it is better to use params in fp16 if compute_dtype is fp16 too. During
+            training, it is preferable to keep parameters in float32 for better
+            numerical stability.
+        output_dtype: the output type of the model. it determines the float precioson
+            of the gradient when training the model.
         model_name: Model's name.
 
     Returns:
         Nucleotide Transformer model forward function.
     """
-    if mixed_precision:
-        # Use mixed precision (only support A100 GPU and TPU for now)
-        half = jnp.bfloat16
-        full = jnp.float32
+    policy = jmp.Policy(
+        compute_dtype=compute_dtype, param_dtype=param_dtype, output_dtype=output_dtype
+    )
+    hk.mixed_precision.set_policy(NucleotideTransformer, policy)
 
-        policy = jmp.Policy(compute_dtype=half, param_dtype=full, output_dtype=full)
-        hk.mixed_precision.set_policy(NucleotideTransformer, policy)
-
-        # Remove it in batch norm to avoid instabilities
-        policy = jmp.Policy(compute_dtype=full, param_dtype=full, output_dtype=half)
-        hk.mixed_precision.set_policy(hk.BatchNorm, policy)
-        hk.mixed_precision.set_policy(hk.LayerNorm, policy)
+    # Remove it in batch norm to avoid instabilities
+    norm_policy = jmp.Policy(
+        compute_dtype=jnp.float32, param_dtype=param_dtype, output_dtype=compute_dtype
+    )
+    hk.mixed_precision.set_policy(hk.BatchNorm, norm_policy)
+    hk.mixed_precision.set_policy(hk.LayerNorm, norm_policy)
 
     def nucleotide_transformer_fn(
         tokens: Tokens, attention_mask: Optional[AttentionMask] = None

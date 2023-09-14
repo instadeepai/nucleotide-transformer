@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import haiku as hk
 import jax
@@ -534,6 +534,90 @@ class SelfAttentionBlock(hk.Module):
 
         output["embeddings"] = x
         return output  # type: ignore
+
+
+class RobertaLMHead(hk.Module):
+    """
+    Roberta Language Model head. Transform final attention layer output into a
+    distribution over tokens at each position.
+    """
+
+    def __init__(self, embed_dim: int, alphabet_size: int, name: Optional[str] = None):
+        """
+        Args:
+            embed_dim: Embedding dimension.
+            alphabet_size: Number of tokens in the alphabet.
+            name: Name of the layer. Defaults to None.
+        """
+        super().__init__(name=name)
+        self.embed_dim = embed_dim
+        self.alphabet_size = alphabet_size
+
+        # Define layers
+        self._first_layer_norm = hk.LayerNorm(
+            axis=-1, create_scale=True, create_offset=True, name="emb_layer_norm_after"
+        )
+        self._fc1 = hk.Linear(self.embed_dim, name="lm_head_fc_1")
+        self._final_fc = hk.Linear(self.alphabet_size, name="lm_final_fc")
+        self._second_layer_norm = hk.LayerNorm(
+            axis=-1, create_scale=True, create_offset=True, name="lm_head_layer_norm"
+        )
+
+    def __call__(self, x: jnp.ndarray) -> Dict[str, jnp.ndarray]:
+        x = self._first_layer_norm(x)
+        # Embeddings are computed after the first layer norm to be consistent with ESM
+        embeddings = x
+        x = self._fc1(x)
+        x = jax.nn.gelu(x, approximate=False)
+        x = self._second_layer_norm(x)
+
+        # Compute logits
+        logits = self._final_fc(x)
+        return {"embeddings": embeddings, "logits": logits}
+
+
+class TokensDropout(hk.Module):
+    """
+    Tokens dropout layer.
+    """
+
+    def __init__(
+        self,
+        embed_dim: int,
+        pad_token_id: int,
+        mask_token_id: int,
+        masking_ratio: float,
+        masking_prob: float,
+        name: Optional[str] = None,
+    ):
+        """
+        Args:
+            embed_dim: Embedding dimension.
+            pad_token_id: ID of the pad token.
+            mask_token_id: ID of the pad token.
+            masking_ratio: Masking ratio.
+            masking_prob: Probability to mask.
+            name: Name of the layer. Defaults to None.
+        """
+        super().__init__(name=name)
+        self.pad_token_id = pad_token_id
+        self.mask_token_id = mask_token_id
+        self.masking_ratio = masking_ratio
+        self.masking_prob = masking_prob
+        self.embed_dim = embed_dim
+
+    def __call__(self, x: jnp.ndarray, tokens: Tokens) -> jnp.ndarray:
+
+        padding_mask_tokens = tokens == self.pad_token_id
+        tokens_repeated = jnp.repeat(
+            tokens[:, :, None], repeats=self.embed_dim, axis=-1
+        )
+        x = jnp.where(tokens_repeated == self.mask_token_id, 0.0, x)
+        mask_ratio_train = self.masking_ratio * self.masking_prob
+        src_lengths = (~padding_mask_tokens).sum(-1)
+        mask_ratio_observed = (tokens == self.mask_token_id).sum(-1) / src_lengths
+        x = x * (1 - mask_ratio_train) / (1 - mask_ratio_observed)[:, None, None]
+        return x
 
 
 class ESMLearnedPositionalEmbeddings(hk.Module):

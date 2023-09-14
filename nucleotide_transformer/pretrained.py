@@ -18,6 +18,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import boto3
 import haiku as hk
+import jax.numpy as jnp
 import joblib
 import tqdm
 from botocore import UNSIGNED
@@ -141,7 +142,9 @@ def download_ckpt_and_hyperparams(model_name: str) -> Tuple[hk.Params, Dict[str,
 
 def get_pretrained_model(
     model_name: str,
-    mixed_precision: bool = False,
+    compute_dtype: jnp.dtype = jnp.float32,
+    param_dtype: jnp.dtype = jnp.float32,
+    output_dtype: jnp.dtype = jnp.float32,
     embeddings_layers_to_save: Tuple[int, ...] = (),
     attention_maps_to_save: Optional[Tuple[Tuple[int, int], ...]] = None,
     max_positions: int = 1024,
@@ -155,7 +158,16 @@ def get_pretrained_model(
 
     Args:
         model_name: Name of the model.
-        mixed_precision: Whether to use mixed precision.
+        compute_dtype: the type of the activations. fp16 runs faster and is lighter in
+            memory. bf16 handles better large int, and is hence more stable ( it avoids
+            float overflows ).
+        param_dtype: if compute_dtype is fp16, the model weights will be cast to fp16
+            during the forward pass anyway. So in inference mode ( not training mode ),
+            it is better to use params in fp16 if compute_dtype is fp16 too. During
+            training, it is preferable to keep parameters in float32 for better
+            numerical stability.
+        output_dtype: the output type of the model. it determines the float precioson
+            of the gradient when training the model.
         embeddings_layers_to_save: Intermediate embeddings to return in the output.
         attention_maps_to_save: Intermediate attention maps to return in the output.
         max_positions: Maximum length of a token (for padding).
@@ -230,7 +242,11 @@ def get_pretrained_model(
     parameters = rename_modules(parameters, full_model_name)
 
     forward_fn = build_nucleotide_transformer_fn(
-        model_config=config, mixed_precision=mixed_precision, model_name=full_model_name
+        model_config=config,
+        compute_dtype=compute_dtype,
+        param_dtype=param_dtype,
+        output_dtype=output_dtype,
+        model_name=full_model_name,
     )
 
     return parameters, forward_fn, tokenizer, config

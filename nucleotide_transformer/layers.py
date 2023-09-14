@@ -534,3 +534,35 @@ class SelfAttentionBlock(hk.Module):
 
         output["embeddings"] = x
         return output  # type: ignore
+
+
+class ESMLearnedPositionalEmbeddings(hk.Module):
+    """
+    Learned positional embeddings to be added to token embeddings. Specific to ESM as it
+    is implemented by shifting the positions by 2 (1 + padding_idx).
+    """
+
+    def __init__(
+        self,
+        vocab_size: int,
+        embed_dim: int,
+        padding_idx: int,
+        name: Optional[str] = None,
+    ):
+        """
+        Args:
+            vocab_size: Tokenizer's vocabulary size.
+            embed_dim: Embedding size.
+            padding_idx: Index attributed to the padding
+                token. Defaults to 1.
+            name: Name of the layer. Defaults to None.
+        """
+        super().__init__(name=name)
+        self.padding_idx = padding_idx
+        self._embed_layer = hk.Embed(vocab_size + padding_idx + 1, embed_dim)
+
+    def __call__(self, tokens: jnp.ndarray) -> jnp.ndarray:
+        mask = tokens != self.padding_idx
+        positions = jnp.cumsum(mask, axis=1) * mask + self.padding_idx
+
+        return self._embed_layer(positions)

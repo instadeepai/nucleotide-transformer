@@ -6,7 +6,7 @@
 
 Welcome to the InstaDeep Github repository of the [Nucleotide Transformer project](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v2).
 
-We are thrilled to open-source this work and provide the community with access to the code and pre-trained weights for four genomics language models. This project was a collaboration with Nvidia and TUM, and the models were trained on DGX A100 nodes on Cambridge-1.
+We are thrilled to open-source this work and provide the community with access to the code and pre-trained weights for eight genomics language models. This project was a collaboration with Nvidia and TUM, and the models were trained on DGX A100 nodes on Cambridge-1.
 
 ## Description 🧬
 
@@ -29,7 +29,7 @@ of language foundational models to genomics with ample opportunities of their ap
 In this repository, you will find the following:
 
 - Inference code for our models
-- Pre-trained weights for all four models
+- Pre-trained weights for all eight models
 - Instructions for using the code and pre-trained models
 
 ## Get started 🚀
@@ -39,7 +39,7 @@ To use the code and pre-trained models, simply:
 1. Clone the repository to your local machine.
 2. Install the package by running `pip install .`.
 
-You can then download and do the inference with any of our four models in only a few lines of codes:
+You can then download and do the inference with any of our eight models in only a few lines of codes:
 ```python
 import haiku as hk
 import jax
@@ -48,8 +48,7 @@ from nucleotide_transformer.pretrained import get_pretrained_model
 
 # Get pretrained model
 parameters, forward_fn, tokenizer, config = get_pretrained_model(
-    model_name="500M_human_ref",
-    mixed_precision=False,
+    model_name="50M_multi_species_v2",
     embeddings_layers_to_save=(20,),
     max_positions=32,
 )
@@ -75,6 +74,10 @@ Supported model names are:
 - **500M_1000G** 
 - **2B5_1000G** 
 - **2B5_multi_species**
+- **50M_multi_species_v2** 
+- **100M_multi_species_v2** 
+- **250M_multi_species_v2** 
+- **500M_multi_species_v2**
 
 You can also run our models and find more example code in google colab [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/instadeepai/nucleotide-transformer/blob/main/examples/inference.ipynb)
 

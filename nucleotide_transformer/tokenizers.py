@@ -34,7 +34,7 @@ def _compute_k_mers(k: int) -> List[str]:
     return ["".join(elt) for elt in product(NUCLEOTIDES, repeat=k)]
 
 
-def compute_dcnuc_tokens_to_ids_v2(k_mers: int) -> Tuple[Dict[str, int], List[str]]:
+def compute_tokens_to_ids_v2(k_mers: int) -> Tuple[Dict[str, int], List[str]]:
     """Compute the tokens to ids mapping that correspond to the tokenizer used to train
     the v2 models.
 

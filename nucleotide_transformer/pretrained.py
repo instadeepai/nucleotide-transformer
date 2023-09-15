@@ -30,7 +30,7 @@ from nucleotide_transformer.model import (
 )
 from nucleotide_transformer.tokenizers import (
     FixedSizeNucleotidesKmersTokenizer,
-    compute_dcnuc_tokens_to_ids_v2,
+    compute_tokens_to_ids_v2,
 )
 
 ENV_XDG_CACHE_HOME = "XDG_CACHE_HOME"
@@ -216,7 +216,7 @@ def get_pretrained_model(
     parameters, hyperparams = download_ckpt_and_hyperparams(model_name)
 
     if "v2" in model_name:
-        tokens_to_ids, _ = compute_dcnuc_tokens_to_ids_v2(
+        tokens_to_ids, _ = compute_tokens_to_ids_v2(
             k_mers=hyperparams["k_for_kmers"]
         )
         tokenizer = FixedSizeNucleotidesKmersTokenizer(

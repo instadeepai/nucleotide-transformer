@@ -28,7 +28,10 @@ from nucleotide_transformer.model import (
     NucleotideTransformerConfig,
     build_nucleotide_transformer_fn,
 )
-from nucleotide_transformer.tokenizers import FixedSizeNucleotidesKmersTokenizer
+from nucleotide_transformer.tokenizers import (
+    FixedSizeNucleotidesKmersTokenizer,
+    compute_dcnuc_tokens_to_ids_v2,
+)
 
 ENV_XDG_CACHE_HOME = "XDG_CACHE_HOME"
 DEFAULT_CACHE_DIR = "~/.cache"
@@ -115,7 +118,7 @@ def download_ckpt_and_hyperparams(model_name: str) -> Tuple[hk.Params, Dict[str,
 
         # Download params and hyperparams
         bucket = "nucleotide-transformer"
-
+        print(f"checkpoints/{model_name}/hyperparams.json")
         download_from_s3_bucket(
             s3_client=s3_client,
             bucket=bucket,
@@ -198,6 +201,10 @@ def get_pretrained_model(
         "500M_1000G",
         "2B5_1000G",
         "2B5_multi_species",
+        "50M_multi_species_v2",
+        "100M_multi_species_v2",
+        "250M_multi_species_v2",
+        "500M_multi_species_v2"
     ]
 
     if not (model_name in supported_models):
@@ -208,15 +215,55 @@ def get_pretrained_model(
     # Download weights and hyperparams
     parameters, hyperparams = download_ckpt_and_hyperparams(model_name)
 
-    tokenizer = FixedSizeNucleotidesKmersTokenizer(
-        k_mers=hyperparams["k_for_kmers"],
-        fixed_length=max_positions,
-        prepend_cls_token=True,
-    )
+    if "v2" in model_name:
+        tokens_to_ids, _ = compute_dcnuc_tokens_to_ids_v2(
+            k_mers=hyperparams["k_for_kmers"]
+        )
+        tokenizer = FixedSizeNucleotidesKmersTokenizer(
+            k_mers=hyperparams["k_for_kmers"],
+            fixed_length=max_positions,
+            prepend_cls_token=True,
+            tokens_to_ids=tokens_to_ids,
+        )
+
+        # Adapat hyperparameters from config
+        alphabet_size = len(tokenizer.vocabulary)
+    else:
+        tokenizer = FixedSizeNucleotidesKmersTokenizer(
+            k_mers=hyperparams["k_for_kmers"],
+            fixed_length=max_positions,
+            prepend_cls_token=True,
+        )
+        alphabet_size = len(tokenizer.vocabulary) - 2
+
+    if "add_bias_ffn" in hyperparams.keys():
+        add_bias_ffn = hyperparams["add_bias_ffn"]
+    else:
+        add_bias_ffn = True
+
+    if "ffn_activation_name" in hyperparams.keys():
+        ffn_activation_name = hyperparams["ffn_activation_name"]
+    else:
+        ffn_activation_name = "gelu-no-approx"
+
+    if "use_glu_in_ffn" in hyperparams.keys():
+        use_glu_in_ffn = hyperparams["use_glu_in_ffn"]
+    else:
+        use_glu_in_ffn = False
+
+    if "add_bias_kv" in hyperparams.keys():
+        add_bias_kv = hyperparams["add_bias_kv"]
+    else:
+        add_bias_kv = False
+
+    if "use_rotary_embedding" in hyperparams.keys():
+        use_rotary_embedding = hyperparams["use_rotary_embedding"]
+    else:
+        use_rotary_embedding = False
 
     # Get config
     config = NucleotideTransformerConfig(
-        alphabet_size=len(tokenizer.vocabulary) - 2,
+        alphabet_size=alphabet_size,
         pad_token_id=tokenizer.pad_token_id,
         mask_token_id=tokenizer.mask_token_id,
         max_positions=hyperparams["max_positions"],
@@ -228,6 +275,12 @@ def get_pretrained_model(
         embed_dim=hyperparams["embed_dim"],
         ffn_embed_dim=hyperparams["ffn_embed_dim"],
         num_layers=hyperparams["num_layers"],
+        positional_embedding=hyperparams["positional_embedding"],
+        add_bias_kv=add_bias_kv,
+        add_bias_ffn=add_bias_ffn,
+        use_glu_in_ffn=use_glu_in_ffn,
+        ffn_activation_name=ffn_activation_name,
+        use_rotary_embedding=use_rotary_embedding,
         # bert
         token_dropout=hyperparams["token_dropout"],
         masking_ratio=hyperparams["masking_ratio"],

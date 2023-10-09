@@ -16,7 +16,7 @@ but leverage DNA sequences from over 3,200 diverse human genomes, as well as 850
 including model and non-model organisms. Through robust and extensive evaluation,
 we show that these large models provide extremely accurate molecular phenotype prediction compared to existing methods.
 
-<img src="imgs/finetuning_results_transp.png" alt= "Performance on downstream tasks" width="800" height="800">
+<img src="imgs/nt_results_rebuttal_2.png" alt= "Performance on downstream tasks" width="800" height="800">
 
 *Fig. 1: The Nucleotide Transformer model matches or outperforms 15 out of 18 downstream tasks using
 fine-tuning. We show the performance results across downstream tasks for fine-tuned transformer models. Error bars represent 2 SDs
@@ -82,6 +82,11 @@ Supported model names are:
 You can also run our models and find more example code in google colab [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/instadeepai/nucleotide-transformer/blob/main/examples/inference.ipynb)
 
 The code runs both on GPU and TPU thanks to Jax!
+
+## Nucleotide Transformers v2 models
+Our second version Nucleotide Transformer v2 models include a series of architectural changes that proved more efficient: instead of using learned positional embeddings, we use Rotary Embeddings that are used at each attention layer and Gated Linear Units with swish activations without bias. These improved models also accept sequences of up to 2,048 tokens leading to a longer context window of 12kbp.
+Inspired by Chinchilla scaling laws, we also trained our NT-v2 models for longer duration (300B tokens for the 50M and 100M models; 1T tokens for the 250M and 500M model) compared to the v1 models (300B tokens for all four models).
+
 
 ## Embeddings retrieval
 The transformer layers are 1-indexed, which means that calling `get_pretrained_model` with the arguments `model_name="500M_human_ref"` and `embeddings_layers_to_save=(1, 20,)` will result in extracting embeddings after the first and 20-th transformer layer. For transformers using the Roberta LM head, it is common practice to extract the final embeddings after the first layer norm of the LM head rather than after the last transformer block. Therefore, if `get_pretrained_model` is called with the following arguments `embeddings_layers_to_save=(24,)`, the embeddings will not be extracted after the final transformer layer but rather after the first layer norm of the LM head.

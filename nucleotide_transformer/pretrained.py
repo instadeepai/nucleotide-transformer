@@ -204,7 +204,7 @@ def get_pretrained_model(
         "50M_multi_species_v2",
         "100M_multi_species_v2",
         "250M_multi_species_v2",
-        "500M_multi_species_v2"
+        "500M_multi_species_v2",
     ]
 
     if not (model_name in supported_models):
@@ -216,9 +216,7 @@ def get_pretrained_model(
     parameters, hyperparams = download_ckpt_and_hyperparams(model_name)
 
     if "v2" in model_name:
-        tokens_to_ids, _ = compute_tokens_to_ids_v2(
-            k_mers=hyperparams["k_for_kmers"]
-        )
+        tokens_to_ids, _ = compute_tokens_to_ids_v2(k_mers=hyperparams["k_for_kmers"])
         tokenizer = FixedSizeNucleotidesKmersTokenizer(
             k_mers=hyperparams["k_for_kmers"],
             fixed_length=max_positions,
@@ -261,6 +259,11 @@ def get_pretrained_model(
     else:
         use_rotary_embedding = False
 
+    if "positional_embedding" in hyperparams.keys():
+        positional_embedding = hyperparams["positional_embedding"]
+    else:
+        positional_embedding = "learned"
+
     # Get config
     config = NucleotideTransformerConfig(
         alphabet_size=alphabet_size,
@@ -275,7 +278,7 @@ def get_pretrained_model(
         embed_dim=hyperparams["embed_dim"],
         ffn_embed_dim=hyperparams["ffn_embed_dim"],
         num_layers=hyperparams["num_layers"],
-        positional_embedding=hyperparams["positional_embedding"],
+        positional_embedding=positional_embedding,
         add_bias_kv=add_bias_kv,
         add_bias_ffn=add_bias_ffn,
         use_glu_in_ffn=use_glu_in_ffn,

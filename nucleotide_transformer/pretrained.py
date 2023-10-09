@@ -264,7 +264,6 @@ def get_pretrained_model(
     else:
         positional_embedding = "learned"
 
-    print(hyperparams)
     # Get config
     config = NucleotideTransformerConfig(
         alphabet_size=alphabet_size,

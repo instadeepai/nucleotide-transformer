@@ -18,10 +18,9 @@ we show that these large models provide extremely accurate molecular phenotype p
 
 <img src="imgs/nt_results_rebuttal_2.png" alt= "Performance on downstream tasks" width="800" height="800">
 
-*Fig. 1: The Nucleotide Transformer model matches or outperforms 15 out of 18 downstream tasks using
-fine-tuning. We show the performance results across downstream tasks for fine-tuned transformer models. Error bars represent 2 SDs
-derived from 10-fold cross-validation. The performance metrics for the state-of-the-art (SOTA) models are shown as horizontal
-dotted lines.*
+*Fig. 1: The Nucleotide Transformer model accurately predicts diverse genomics tasks after fine-
+tuning. We show the performance results across downstream tasks for fine-tuned transformer models. Error bars represent 2 SDs
+derived from 10-fold cross-validation.*
 
 Overall, our work provides novel insights related to the training and application
 of language foundational models to genomics with ample opportunities of their applications in the field.

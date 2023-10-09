@@ -16,7 +16,7 @@ but leverage DNA sequences from over 3,200 diverse human genomes, as well as 850
 including model and non-model organisms. Through robust and extensive evaluation,
 we show that these large models provide extremely accurate molecular phenotype prediction compared to existing methods.
 
-<img src="imgs/finetuning_results_transp.png.png" alt= "Performance on downstream tasks" width="800" height="800">
+<img src="imgs/finetuning_results_transp.png" alt= "Performance on downstream tasks" width="800" height="800">
 
 *Fig. 1: The Nucleotide Transformer model matches or outperforms 15 out of 18 downstream tasks using
 fine-tuning. We show the performance results across downstream tasks for fine-tuned transformer models. Error bars represent 2 SDs

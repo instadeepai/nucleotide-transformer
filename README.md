@@ -111,6 +111,10 @@ tokenized_dna_sequence_2 = [<CLS>,<ACGTGT>,<A>,<C>,<N>,<TGCACG>,<G>,<A>,<N>,<CGA
 All the transformers can therefore take sequences of up to 5994 nucleotides if there are
 no "N" inside. 
 
+## Nucleotide Transformer HuggingFace 🤗
+
+All the Nucleotide Transformer models are available at Instadeep's [Huggingface space](https://huggingface.co/collections/InstaDeepAI/nucleotide-transformer-65099cdde13ff96230f2e592). Two example notebooks showing how to finetune any of the models [with regular finetuning](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling.ipynb) 
+and [with LoRA](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling_with_peft.ipynb) on any of the Nucleotide Transfomer tasks are also available in HuggingFace example notebooks. 
 
 ## Acknowledgments 🙏
 

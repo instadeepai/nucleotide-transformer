@@ -30,9 +30,9 @@ we show that these large models provide extremely accurate molecular phenotype p
 
 <img src="imgs/nt_results_rebuttal_2.png" alt= "Performance on downstream tasks" width="800" height="800">
 
-*Fig. 1: The Nucleotide Transformer model accurately predicts diverse genomics tasks after fine-
-tuning. We show the performance results across downstream tasks for fine-tuned transformer models. Error bars represent 2 SDs
-derived from 10-fold cross-validation.*
+*Fig. 1: The Nucleotide Transformer model accurately predicts diverse genomics tasks 
+after fine-tuning. We show the performance results across downstream tasks for fine-tuned transformer models. Error bars represent 2 SDs derived from 10-fold cross-validation.*
+
 ---
 ### Agro Nucleotide Transformer Model
 In this work we present a novel foundational large language model trained 

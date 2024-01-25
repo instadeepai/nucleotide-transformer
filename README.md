@@ -1,16 +1,28 @@
-# Nucleotide Transformer
+# Nucleotide Transformers Collection
 
 [![Python Version](https://img.shields.io/badge/python-3.8-blue.svg)](https://docs.python.org/3.8/library/index.html)
 [![Jax Version](https://img.shields.io/badge/jax-0.3.25-informational)](https://jax.readthedocs.io/en/latest/)
 [![license](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-blue.svg)](LICENSE)
 
-Welcome to the InstaDeep Github repository of the [Nucleotide Transformer project](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3).
+Welcome to this InstaDeep Github repository, a collection of transformer 
+based genomic language models from both of our research works, [The Nucleotide 
+Transformer 
+](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) and [Agro 
+Nucleotide Transformer](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v1).
 
-We are thrilled to open-source this work and provide the community with access to the code and pre-trained weights for eight genomics language models. This project was a collaboration with Nvidia and TUM, and the models were trained on DGX A100 nodes on Cambridge-1.
+We are thrilled to open-source these works and provide the community with access to the 
+code and pre-trained weights for nine genomics language models. Models from [The Nucleotide Transformer 
+](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) project were 
+developed in collaboration with Nvidia and TUM, and the models were trained on DGX 
+A100 nodes on Cambridge-1. The model from the [Agro 
+Nucleotide Transformer](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v1) 
+project was develop in collaboration with Google, and the model trained on TPU-v4 
+accelerators.
 
 ## Description 🧬
-
 We present a comprehensive examination of foundational language models that were pre-trained on DNA sequences from whole-genomes.
+
+### The Nucleotide Transformer Models
 Compared to other approaches, our models do not only integrate information from single reference genomes,
 but leverage DNA sequences from over 3,200 diverse human genomes, as well as 850 genomes from a wide range of species,
 including model and non-model organisms. Through robust and extensive evaluation,
@@ -21,14 +33,30 @@ we show that these large models provide extremely accurate molecular phenotype p
 *Fig. 1: The Nucleotide Transformer model accurately predicts diverse genomics tasks after fine-
 tuning. We show the performance results across downstream tasks for fine-tuned transformer models. Error bars represent 2 SDs
 derived from 10-fold cross-validation.*
+---
+### Agro Nucleotide Transformer Model
+In this work we present a novel foundational large language model trained 
+on reference genomes from 48 plant species with a predominant focus on crop
+species. We assessed the performance of AgroNT across several prediction tasks 
+ranging from regulatory features, RNA processing, and gene expression, and show that 
+AgroNT can obtain state-of-the art performance.
 
-Overall, our work provides novel insights related to the training and application
+<img src="imgs/Agro_NT_Gene_Expression.png" alt="AgroNT Performance on Gene Expression">
+
+*Fig. 2: AgroNT provides gene expression prediction across different plant species. 
+Gene expression prediction on holdout genes across all tissues are correlated with 
+observed gene expression levels. The coefficient of determination (R<sup>2</sup>) from a linear model 
+and associated P -values between predicted and observed values are shown.*
+
+---
+
+Overall, our works provides novel insights related to the training and application
 of language foundational models to genomics with ample opportunities of their applications in the field.
 
 In this repository, you will find the following:
 
 - Inference code for our models
-- Pre-trained weights for all eight models
+- Pre-trained weights for all nine models
 - Instructions for using the code and pre-trained models
 
 ## Get started 🚀
@@ -38,7 +66,8 @@ To use the code and pre-trained models, simply:
 1. Clone the repository to your local machine.
 2. Install the package by running `pip install .`.
 
-You can then download and do the inference with any of our eight models in only a few lines of codes:
+You can then download and do the inference with any of our nine models in only a few 
+lines of codes:
 ```python
 import haiku as hk
 import jax
@@ -77,6 +106,7 @@ Supported model names are:
 - **100M_multi_species_v2** 
 - **250M_multi_species_v2** 
 - **500M_multi_species_v2**
+- **1B_agro_nt**
 
 You can also run our models and find more example code in google colab [![Open All Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/instadeepai/nucleotide-transformer/blob/main/examples/inference.ipynb)
 

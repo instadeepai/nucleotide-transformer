@@ -143,7 +143,10 @@ no "N" inside.
 
 ## HuggingFace 🤗
 
-All the Nucleotide Transformer models are available at Instadeep's [Huggingface space](https://huggingface.co/collections/InstaDeepAI/nucleotide-transformer-65099cdde13ff96230f2e592)! Two example notebooks showing how to finetune any of the models [with regular finetuning](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling.ipynb) 
+The collection of models presented in this repo are available on Instadeep's 
+huggingface spaces here: [The Nucleotide Transformers space](https://huggingface.co/collections/InstaDeepAI/nucleotide-transformer-65099cdde13ff96230f2e592)
+and [Agro Nucleotide Transformer space](https://huggingface.co/collections/InstaDeepAI/agro-nucleotide-transformer-65b25c077cd0069ad6f6d344)! Two 
+example notebooks showing how to finetune any of the models [with regular finetuning](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling.ipynb) 
 and [with LoRA](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling_with_peft.ipynb) on any of the Nucleotide Transfomer tasks are also available in HuggingFace example notebooks.
 
 ## Acknowledgments 🙏
@@ -154,16 +157,32 @@ Furthermore, we extend gratitude to all those who deposit experimental data in p
 those who maintain these databases, and those who make analytical and predictive methods freely
 available. We also thank the Jax development team.
 
-## Citing the Nucleotide Transformer 📚
+## Citing our works 📚
 
-If you find this repository useful in your work, please add the following citation to our [associated paper](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v2):
+If you find this repository useful in your work, please add a relevant citation to 
+either of our associated papers:
 
+[The Nucleotide Transformer paper](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v2):
 ```bibtex
 @article{dalla2023nucleotide,
   title={The Nucleotide Transformer: Building and Evaluating Robust Foundation Models for Human Genomics},
   author={Dalla-Torre, Hugo and Gonzalez, Liam and Mendoza Revilla, Javier and Lopez Carranza, Nicolas and Henryk Grywaczewski, Adam and Oteri, Francesco and Dallago, Christian and Trop, Evan and Sirelkhatim, Hassan and Richard, Guillaume and others},
   journal={bioRxiv},
   pages={2023--01},
+  year={2023},
+  publisher={Cold Spring Harbor Laboratory}
+}
+```
+
+**or**
+
+[Agro Nucleotide Transformer paper](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v1):
+```bibtex
+@article{mendoza2023foundational,
+  title={A Foundational Large Language Model for Edible Plant Genomes},
+  author={Mendoza-Revilla, Javier and Trop, Evan and Gonzalez, Liam and Roller, Masa and Dalla-Torre, Hugo and de Almeida, Bernardo P and Richard, Guillaume and Caton, Jonathan and Lopez Carranza, Nicolas and Skwark, Marcin and others},
+  journal={bioRxiv},
+  pages={2023--10},
   year={2023},
   publisher={Cold Spring Harbor Laboratory}
 }

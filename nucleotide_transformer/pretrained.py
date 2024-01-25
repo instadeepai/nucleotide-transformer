@@ -205,6 +205,7 @@ def get_pretrained_model(
         "100M_multi_species_v2",
         "250M_multi_species_v2",
         "500M_multi_species_v2",
+        "1B_agro_nt"
     ]
 
     if not (model_name in supported_models):

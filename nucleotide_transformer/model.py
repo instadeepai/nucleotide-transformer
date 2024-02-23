@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Implementation of the Nucleotide Transformer model in Jax."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Callable, Dict, List, Optional, Tuple
 
 import haiku as hk
@@ -29,6 +29,7 @@ from nucleotide_transformer.layers import (
 from nucleotide_transformer.types import (
     AttentionMask,
     Embedding,
+    SequenceMask,
     Tokens,
     TransformerOutput,
 )
@@ -396,3 +397,94 @@ def build_nucleotide_transformer_fn(
         return outs
 
     return nucleotide_transformer_fn
+
+def build_nucleotide_transformer_with_head_fn(
+    model_config: NucleotideTransformerConfig,
+    head_fn: Callable[
+        [], Callable[[jnp.ndarray, SequenceMask], Dict[str, jnp.ndarray]]
+    ],
+    compute_dtype: jnp.dtype = jnp.float32,
+    param_dtype: jnp.dtype = jnp.float32,
+    output_dtype: jnp.dtype = jnp.float32,
+    model_name: Optional[str] = None,
+) -> Callable:
+    """
+    Creates a model consisting of a nucleotide transformer model and the input head.
+
+    Args:
+        model_config: Model hyperparameters.
+        head_fn: Wrapper initializing a Classification/Regression head. The head cannot
+            be passed directly as haiku modules cannot be initialized outside
+            hk.transform.
+        compute_dtype: the type of the activations. fp16 runs faster and is lighter in
+            memory. bf16 handles better large int, and is hence more stable ( it avoids
+            float overflows ).
+        param_dtype: if compute_dtype is fp16, the model weights will be cast to fp16
+            during the forward pass anyway. So in inference mode ( not training mode ),
+            it is better to use params in fp16 if compute_dtype is fp16 too. During
+            training, it is preferable to keep parameters in float32 for better
+            numerical stability.
+        output_dtype: the output type of the model. it determines the float precioson
+            of the gradient when training the model.
+        model_name: Optional name of the model.
+
+    Example of the function being used with a classification head:
+        The classification head is wrapped inside head_fn because
+        haiku modules cannot be instantiated outside hk.transform.
+        def head_fn():
+            return SimpleClassificationHead(num_classes=num_classes)
+        finetune_forward_fn = build_esm_ia3_rescaling_with_head_fn(
+            model_config=config, head_fn=head_fn, model_name=model_name,
+        )
+        finetune_forward_fn = hk.transform(finetune_forward_fn)
+
+    Returns:
+        ESM model forward function with IA³ rescaling and indicated head.
+    """
+    # Adding final layer embedding if missing to be used as classification head input.
+    num_layers = model_config.num_layers
+    if not (num_layers in model_config.embeddings_layers_to_save):
+        emb_layers_to_save = model_config.embeddings_layers_to_save + (num_layers,)
+        model_config = replace(
+            model_config, embeddings_layers_to_save=emb_layers_to_save
+        )
+
+    policy = jmp.Policy(
+        compute_dtype=compute_dtype, param_dtype=param_dtype, output_dtype=output_dtype
+    )
+    hk.mixed_precision.set_policy(NucleotideTransformer, policy)
+
+    # Remove it in batch norm to avoid instabilities
+    norm_policy = jmp.Policy(
+        compute_dtype=jnp.float32, param_dtype=param_dtype, output_dtype=compute_dtype
+    )
+    hk.mixed_precision.set_policy(hk.BatchNorm, norm_policy)
+    hk.mixed_precision.set_policy(hk.LayerNorm, norm_policy)
+
+    def esm_fn(
+        tokens: Tokens,
+        attention_mask: Optional[AttentionMask] = None,
+        sequence_mask: Optional[SequenceMask] = None,
+    ) -> TransformerOutput:
+        """Forward pass."""
+        # Run the encoder over the inputs.
+        encoder = NucleotideTransformer(config=model_config, name=model_name)
+        outs: TransformerOutput = encoder(
+            tokens=tokens,
+            attention_mask=attention_mask,
+        )
+        embeddings = outs[f"embeddings_{num_layers}"]
+
+        # Define head.
+        head = head_fn()
+
+        if sequence_mask is None:
+            sequence_mask = jnp.ones_like(tokens)
+
+        head_outs = head(  # type: ignore[call-arg]
+            x=embeddings, sequence_mask=sequence_mask
+        )
+        outs.update(head_outs)
+        return outs
+
+    return esm_fn

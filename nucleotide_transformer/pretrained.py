@@ -358,18 +358,6 @@ def rename_modules_segment_nt(parameters: hk.Params, model_name: str) -> hk.Para
         new_name = new_name.replace("u_net_head", model_name + "_1")
         
 
-        # if "attention_layer" in new_name:
-        #     if new_name.split("/")[3] == "mha":
-        #         new_name = "/".join(
-        #             new_name.split("/")[:3]
-        #             + ["self_attention"]
-        #             + new_name.split("/")[4:]
-        #         )
-        # if "mha_layer_norm" in new_name:
-        #     new_name = new_name.replace("mha_layer_norm", "self_attention_layer_norm")
-        # if "esm_roberta_lm_head" in new_name:
-        #     new_name = new_name.replace("esm_roberta_lm_head", "roberta_lm_head")
-
         parameters[new_name] = parameters.pop(layer_name)
 
     return parameters

@@ -251,7 +251,7 @@ class UNetHead(hk.Module):
 
     def __init__(
         self,
-        features: List[str],
+        num_features: int,
         embed_dimension: int = 1024,
         num_layers: int = 2,
         name: Optional[str] = None,
@@ -261,7 +261,7 @@ class UNetHead(hk.Module):
             name: Name of the layer. Defaults to None.
         """
         super().__init__(name=name)
-        self._num_features = len(features)
+        self._num_features = num_features
 
         w_init = initializers.VarianceScaling(2.0, "fan_in", "uniform")
         b_init = initializers.VarianceScaling(2.0, "fan_in", "uniform")

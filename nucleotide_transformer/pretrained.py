@@ -27,6 +27,7 @@ from botocore.config import Config
 from nucleotide_transformer.heads import UNetHead
 from nucleotide_transformer.model import (
     NucleotideTransformerConfig,
+    SegmentNTConfig,
     build_nucleotide_transformer_fn,
     build_nucleotide_transformer_with_head_fn,
 )
@@ -51,7 +52,7 @@ def _get_dir() -> str:
 
 
 def download_from_s3_bucket(
-    s3_client: boto3.session.Session, bucket: str, key: str, filename: str
+    s3_client: boto3.session.Session, bucket: str, key: str, filename: str, verbose: bool = True,
 ) -> None:
     """
     Download data from the s3 bucket and display downloading progression bar.
@@ -61,24 +62,35 @@ def download_from_s3_bucket(
         bucket: Bucket name.
         key: Path towards file in the bucket.
         filename: Path to save file locally.
+        verbose: Whether or not to print the progress bar during the download.
     """
     kwargs = {
         "Bucket": bucket,
         "Key": key,
     }
     object_size = s3_client.head_object(**kwargs)["ContentLength"]
-    with tqdm.tqdm(total=object_size, unit="B", unit_scale=True, desc=filename) as pbar:
+
+    if verbose:
+        with tqdm.tqdm(total=object_size, unit="B", unit_scale=True, desc=filename) as pbar:
+            with open(filename, "wb") as f:
+                s3_client.download_fileobj(
+                    Bucket=bucket,
+                    Key=key,
+                    ExtraArgs=None,
+                    Fileobj=f,
+                    Callback=lambda bytes_transferred: pbar.update(bytes_transferred),
+                )
+    else:
         with open(filename, "wb") as f:
             s3_client.download_fileobj(
                 Bucket=bucket,
                 Key=key,
                 ExtraArgs=None,
                 Fileobj=f,
-                Callback=lambda bytes_transferred: pbar.update(bytes_transferred),
             )
 
 
-def download_ckpt_and_hyperparams(model_name: str) -> Tuple[hk.Params, Dict[str, Any]]:
+def download_ckpt_and_hyperparams(model_name: str, verbose: bool = True) -> Tuple[hk.Params, Dict[str, Any]]:
     """
     Download checkpoint and hyperparams on kao datacenter.
 
@@ -88,6 +100,8 @@ def download_ckpt_and_hyperparams(model_name: str) -> Tuple[hk.Params, Dict[str,
     Returns:
         Model parameters.
         Model hyperparameters' dict.
+        verbose: Whether or not to print the progress bar during the downloads.
+
 
     """
     # Get directories
@@ -126,6 +140,7 @@ def download_ckpt_and_hyperparams(model_name: str) -> Tuple[hk.Params, Dict[str,
             bucket=bucket,
             key=f"checkpoints/{model_name}/hyperparams.json",
             filename=hyperparams_save_dir,
+            verbose=verbose
         )
 
         download_from_s3_bucket(
@@ -133,6 +148,7 @@ def download_ckpt_and_hyperparams(model_name: str) -> Tuple[hk.Params, Dict[str,
             bucket=bucket,
             key=f"checkpoints/{model_name}/ckpt.joblib",
             filename=params_save_dir,
+            verbose=verbose
         )
 
         # Load locally
@@ -365,6 +381,7 @@ def rename_modules_segment_nt(parameters: hk.Params, model_name: str) -> hk.Para
 
 def get_pretrained_segment_nt_model(
     model_name: str,
+    rescaling_factor: Optional[float] = None,
     compute_dtype: jnp.dtype = jnp.float32,
     param_dtype: jnp.dtype = jnp.float32,
     output_dtype: jnp.dtype = jnp.float32,
@@ -381,6 +398,13 @@ def get_pretrained_segment_nt_model(
 
     Args:
         model_name: Name of the model.
+        rescaling_factor: The rescaling factor that is applied to the rotary embeddings
+            module as described in https://arxiv.org/abs/2309.00071. This rescaling 
+            factor is to be specified only if inference is done on sequences longer 
+            than the training sequence length, i.e 30kb, because the rescaling
+            factor used to train on 30kb is already used by default. If this is the 
+            case, the rescaling factor s should be s=L'/L with L' the inference length 
+            and L=2048.
         compute_dtype: the type of the activations. fp16 runs faster and is lighter in
             memory. bf16 handles better large int, and is hence more stable ( it avoids
             float overflows ).
@@ -420,6 +444,7 @@ def get_pretrained_segment_nt_model(
         "segment_nt_10kb",
         "segment_nt_20kb",
         "segment_nt_30kb",
+        "segment_nt_30kb_multi_species",
         
     ]
 
@@ -471,9 +496,22 @@ def get_pretrained_segment_nt_model(
         positional_embedding = hyperparams["positional_embedding"]
     else:
         positional_embedding = "learned"
+    
+    training_rescaling_factor = hyperparams["rescaling_factor"]
+
+    if rescaling_factor is None:
+        inference_rescaling_factor = training_rescaling_factor
+
+    # Rescaling factor is indicated and should replace the one from the training
+    else:
+        inference_rescaling_factor = rescaling_factor
+
+
+    
+    genomic_features = hyperparams["features"]
 
     # Get config
-    config = NucleotideTransformerConfig(
+    config = SegmentNTConfig(
         alphabet_size=alphabet_size,
         pad_token_id=tokenizer.pad_token_id,
         mask_token_id=tokenizer.mask_token_id,
@@ -499,6 +537,9 @@ def get_pretrained_segment_nt_model(
         # embeddings to save
         embeddings_layers_to_save=embeddings_layers_to_save,
         attention_maps_to_save=attention_maps_to_save,
+        # Rotary embeddings rescaling
+        rescaling_factor=inference_rescaling_factor,
+        features=genomic_features
     )
 
     # NOTE: module names are changed here, to validate !
@@ -508,7 +549,7 @@ def get_pretrained_segment_nt_model(
     # get segmentation model
     def head_fn() -> hk.Module:
         return UNetHead(
-            num_features=14,
+            num_features=len(genomic_features),
             embed_dimension=config.embed_dim,
             name=full_model_name
         )

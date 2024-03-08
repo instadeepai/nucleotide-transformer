@@ -229,7 +229,7 @@ no "N" inside.
 
 ## HuggingFace 🤗
 
-The collection of models presented in this repo are available on Instadeep's
+The collection of models presented in this repository are available on Instadeep's
 huggingface spaces here: [The Nucleotide Transformers space](https://huggingface.co/collections/InstaDeepAI/nucleotide-transformer-65099cdde13ff96230f2e592)
 and [Agro Nucleotide Transformer space](https://huggingface.co/collections/InstaDeepAI/agro-nucleotide-transformer-65b25c077cd0069ad6f6d344)! Two
 example notebooks showing how to finetune any of the models [with regular finetuning](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling.ipynb)

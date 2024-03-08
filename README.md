@@ -138,31 +138,22 @@ To use the code and pre-trained models, simply:
 1. Clone the repository to your local machine.
 2. Install the package by running `pip install .`.
 
-You can then download and infer on a sequence with any of our 4 models in only a few 
+You can then download and infer on a sequence with any of our models in only a few 
 lines of codes:
+
+⚠️ The Segment-NT models have been trained on a sequences of 30,000 nucleotides, or 5001 tokens (accounting for the CLS token). However, Segment-NT has been shown to generalize up to sequences of 50,000 bp. For training on 30,000 bps, which is a length
+superior than the maximum length of 2048 6-mers tokens that the nucleotide transformer can handle, Yarn rescaling is employed. 
+By default, the `rescaling factor` is set to the one used during the training. In case you need to infer on sequences between 30kbp and 50kbp, make sure to pass the `rescaling_factor` argument in the `get_pretrained_segment_nt_model` function with
+the value `rescaling_factor = max_num_nucleotides / max_num_tokens_nt` where `num_dna_tokens_inference` is the number of tokens at inference (i.e 6669 for a sequence of 40008 base pairs) and `max_num_tokens_nt` is the max number of tokens on which the backbone nucleotide-transformer was trained on, i.e `2048`. 
+
+🔍 The notebook `examples/inference_segment_nt.ipynb` showcases how to infer on a 50kb sequence and plot the probabilities to reproduce the Fig.3 of the paper.
+
 
 ```python
 import haiku as hk
 import jax
 import jax.numpy as jnp
 from nucleotide_transformer.pretrained import get_pretrained_segment_nt_model
-
-features = [
-    "protein_coding_gene",
-    "lncRNA",
-    "exon",
-    "intron",
-    "splice_donor",
-    "splice_acceptor",
-    "5UTR",
-    "3UTR",
-    "CTCF-bound",
-    "polyA_signal",
-    "enhancer_Tissue_specific",
-    "enhancer_Tissue_invariant",
-    "promoter_Tissue_specific",
-    "promoter_Tissue_invariant",
-  ]
 
 # The number of DNA tokens (excluding the CLS token prepended) needs to be dividible by
 # 2 to the power of the number of downsampling block, i.e 4.
@@ -173,7 +164,9 @@ assert max_num_nucleotides % 4 == 0, (
      "2 to the power of the number of downsampling block, i.e 4.")
 
 parameters, forward_fn, tokenizer, config = get_pretrained_segment_nt_model(
-    model_name="segment_nt_3kb",
+    model_name="segment_nt_30kb",
+    embeddings_layers_to_save=(29,),
+    attention_maps_to_save=((1, 4), (7, 10)),
     max_positions=max_num_nucleotides + 1,
 )
 forward_fn = hk.transform(forward_fn)
@@ -196,8 +189,10 @@ logits = outs["logits"]
 probabilities = jnp.asarray(jax.nn.softmax(logits, axis=-1))[...,-1]
 print(f"Probabilities shape: {probabilities.shape}")
 
+print(f"Features inferred: {config.features}")
+
 # Get probabilities associated with intron
-idx_intron = features.index("intron")
+idx_intron = config.features.index("intron")
 probabilities_intron = probabilities[:,:,idx_intron]
 print(f"Intron probabilities shape: {probabilities_intron.shape}")
 ```

@@ -440,11 +440,8 @@ def get_pretrained_segment_nt_model(
         attention_maps_to_save = ()
 
     supported_models = [
-        "segment_nt_3kb",
-        "segment_nt_10kb",
-        "segment_nt_20kb",
-        "segment_nt_30kb",
-        "segment_nt_30kb_multi_species",
+        "segment_nt",
+        "segment_nt_multi_species",
         
     ]
 

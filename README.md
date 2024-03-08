@@ -164,7 +164,7 @@ assert max_num_nucleotides % 4 == 0, (
      "2 to the power of the number of downsampling block, i.e 4.")
 
 parameters, forward_fn, tokenizer, config = get_pretrained_segment_nt_model(
-    model_name="segment_nt_30kb",
+    model_name="segment_nt",
     embeddings_layers_to_save=(29,),
     attention_maps_to_save=((1, 4), (7, 10)),
     max_positions=max_num_nucleotides + 1,

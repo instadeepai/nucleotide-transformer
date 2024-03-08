@@ -198,8 +198,8 @@ print(f"Intron probabilities shape: {probabilities_intron.shape}")
 ```
 
 Supported model names are:
-- **segment_nt_30kb**
-- **segment_nt_30kb_multi_species**
+- **segment_nt**
+- **segment_nt_multi_species**
 
 The code runs both on GPU and TPU thanks to Jax!
 

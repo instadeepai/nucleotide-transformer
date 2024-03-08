@@ -5,18 +5,18 @@
 [![license](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-blue.svg)](LICENSE)
 
 Welcome to this InstaDeep Github repository, where are featured:
-1. A collection of transformer based genomic language models from both of our research works, [The Nucleotide 
+1. A collection of transformer based genomic language models from both of our research works, [The Nucleotide
 Transformer ](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) and [Agro Nucleotide Transformer](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v1).
-2. A collection of segmentation models using the Nucleotide Transformers as a backbone, allowing segmentation of a dna sequence's 
+2. A collection of segmentation models using the Nucleotide Transformers as a backbone, allowing segmentation of a dna sequence's
 genomic elements at single-nucleotide resolution: the [Segment-NT]() models #TODO: Add link to the preprint
 
-We are thrilled to open-source these works and provide the community with access to the 
-code and pre-trained weights for these nine genomics language models and 2 segmentation models. Models from [The Nucleotide Transformer 
-](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) project were 
-developed in collaboration with Nvidia and TUM, and the models were trained on DGX 
-A100 nodes on Cambridge-1. The model from the [Agro 
-Nucleotide Transformer](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v1) 
-project was develop in collaboration with Google, and the model trained on TPU-v4 
+We are thrilled to open-source these works and provide the community with access to the
+code and pre-trained weights for these nine genomics language models and 2 segmentation models. Models from [The Nucleotide Transformer
+](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) project were
+developed in collaboration with Nvidia and TUM, and the models were trained on DGX
+A100 nodes on Cambridge-1. The model from the [Agro
+Nucleotide Transformer](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v1)
+project was develop in collaboration with Google, and the model trained on TPU-v4
 accelerators.
 
 Overall, our works provides novel insights related to the pretraining and application
@@ -38,22 +38,22 @@ we show that these large models provide extremely accurate molecular phenotype p
 
 <img src="imgs/nt_results_rebuttal_2.png" alt= "Performance on downstream tasks" width="800" height="800">
 
-*Fig. 1: The Nucleotide Transformer model accurately predicts diverse genomics tasks 
+*Fig. 1: The Nucleotide Transformer model accurately predicts diverse genomics tasks
 after fine-tuning. We show the performance results across downstream tasks for fine-tuned transformer models. Error bars represent 2 SDs derived from 10-fold cross-validation.*
 
 
 ## Agro Nucleotide Transformer Model
-In this work we present a novel foundational large language model trained 
+In this work we present a novel foundational large language model trained
 on reference genomes from 48 plant species with a predominant focus on crop
-species. We assessed the performance of AgroNT across several prediction tasks 
-ranging from regulatory features, RNA processing, and gene expression, and show that 
+species. We assessed the performance of AgroNT across several prediction tasks
+ranging from regulatory features, RNA processing, and gene expression, and show that
 AgroNT can obtain state-of-the art performance.
 
 <img src="imgs/Agro_NT_Gene_Expression.png" alt="AgroNT Performance on Gene Expression">
 
-*Fig. 2: AgroNT provides gene expression prediction across different plant species. 
-Gene expression prediction on holdout genes across all tissues are correlated with 
-observed gene expression levels. The coefficient of determination (R<sup>2</sup>) from a linear model 
+*Fig. 2: AgroNT provides gene expression prediction across different plant species.
+Gene expression prediction on holdout genes across all tissues are correlated with
+observed gene expression levels. The coefficient of determination (R<sup>2</sup>) from a linear model
 and associated P -values between predicted and observed values are shown.*
 
 
@@ -64,7 +64,7 @@ To use the code and pre-trained models, simply:
 1. Clone the repository to your local machine.
 2. Install the package by running `pip install .`.
 
-You can then download and do the inference with any of our nine models in only a few 
+You can then download and do the inference with any of our nine models in only a few
 lines of codes:
 ```python
 import haiku as hk
@@ -96,13 +96,13 @@ outs = forward_fn.apply(parameters, random_key, tokens)
 print(outs["embeddings_20"].shape)
 ```
 Supported model names are:
-- **500M_human_ref** 
-- **500M_1000G** 
-- **2B5_1000G** 
+- **500M_human_ref**
+- **500M_1000G**
+- **2B5_1000G**
 - **2B5_multi_species**
-- **50M_multi_species_v2** 
-- **100M_multi_species_v2** 
-- **250M_multi_species_v2** 
+- **50M_multi_species_v2**
+- **100M_multi_species_v2**
+- **250M_multi_species_v2**
 - **500M_multi_species_v2**
 - **1B_agro_nt**
 
@@ -125,7 +125,7 @@ The transformer layers are 1-indexed, which means that calling `get_pretrained_m
 Segment-NT models leverage a Nucleotide Transformer (NT) transformer from which we removed the language model head and replaced by a 1-dimensional U-Net segmentation head to predict the location of several types of genomics elements in a sequence at a single nucleotide resolution. We trained four different model variants on 14 different classes of human genomics elements in input sequences up to 30kb. These include gene (protein-coding genes, lncRNAs, 5’UTR, 3’UTR, exon, intron, splice acceptor and donor sites) and regulatory (polyA signal, tissue-invariant and tissue-specific promoters and enhancers, and CTCF-
 bound sites) elements. Segment-NT achieves superior performance over the state-of-the-art U-Net
 segmentation architecture, benefiting from the pre-trained weights of NT, and demonstrates zero-
-shot generalization up to 50kbp. 
+shot generalization up to 50kbp.
 
 <img src="imgs/segment_nt_panel1.png" alt= "Performance on downstream tasks" width="800" height="800">
 
@@ -138,13 +138,13 @@ To use the code and pre-trained models, simply:
 1. Clone the repository to your local machine.
 2. Install the package by running `pip install .`.
 
-You can then download and infer on a sequence with any of our models in only a few 
+You can then download and infer on a sequence with any of our models in only a few
 lines of codes:
 
 ⚠️ The Segment-NT models have been trained on a sequences of 30,000 nucleotides, or 5001 tokens (accounting for the CLS token). However, Segment-NT has been shown to generalize up to sequences of 50,000 bp. For training on 30,000 bps, which is a length
-superior than the maximum length of 2048 6-mers tokens that the nucleotide transformer can handle, Yarn rescaling is employed. 
+superior than the maximum length of 2048 6-mers tokens that the nucleotide transformer can handle, Yarn rescaling is employed.
 By default, the `rescaling factor` is set to the one used during the training. In case you need to infer on sequences between 30kbp and 50kbp, make sure to pass the `rescaling_factor` argument in the `get_pretrained_segment_nt_model` function with
-the value `rescaling_factor = max_num_nucleotides / max_num_tokens_nt` where `num_dna_tokens_inference` is the number of tokens at inference (i.e 6669 for a sequence of 40008 base pairs) and `max_num_tokens_nt` is the max number of tokens on which the backbone nucleotide-transformer was trained on, i.e `2048`. 
+the value `rescaling_factor = max_num_nucleotides / max_num_tokens_nt` where `num_dna_tokens_inference` is the number of tokens at inference (i.e 6669 for a sequence of 40008 base pairs) and `max_num_tokens_nt` is the max number of tokens on which the backbone nucleotide-transformer was trained on, i.e `2048`.
 
 🔍 The notebook `examples/inference_segment_nt.ipynb` showcases how to infer on a 50kb sequence and plot the probabilities to reproduce the Fig.3 of the paper.
 
@@ -198,45 +198,42 @@ print(f"Intron probabilities shape: {probabilities_intron.shape}")
 ```
 
 Supported model names are:
-- **segment_nt_3kb** 
-- **segment_nt_10kb** 
-- **segment_nt_20kb** 
 - **segment_nt_30kb**
-- **segment_nt_30kb_multi_species** 
+- **segment_nt_30kb_multi_species**
 
 The code runs both on GPU and TPU thanks to Jax!
 
 ---
 ## Tokenization :abc:
 
-The models are trained on sequences of length up to 1000 tokens, including the 
-\<CLS> token prepended automatically to the beginning of the sequence. The tokenizer 
+The models are trained on sequences of length up to 1000 tokens, including the
+\<CLS> token prepended automatically to the beginning of the sequence. The tokenizer
 starts tokenizing from left to right by grouping the letters "A", "C", "G" and "T" in
-6-mers. The "N" letter is chosen not to be grouped inside the k-mers, therefore 
+6-mers. The "N" letter is chosen not to be grouped inside the k-mers, therefore
 whenever the tokenizer encounters a "N", or if the number of nucleotides in the sequence
-is not a multiple of 6, it will tokenize the nucleotides without grouping them. Examples 
-are given below: 
+is not a multiple of 6, it will tokenize the nucleotides without grouping them. Examples
+are given below:
 
 ```python
-dna_sequence_1 = "ACGTGTACGTGCACGGACGACTAGTCAGCA" 
+dna_sequence_1 = "ACGTGTACGTGCACGGACGACTAGTCAGCA"
 tokenized_dna_sequence_1 = [<CLS>,<ACGTGT>,<ACGTGC>,<ACGGAC>,<GACTAG>,<TCAGCA>]
 
-dna_sequence_2 = "ACGTGTACNTGCACGGANCGACTAGTCTGA" 
+dna_sequence_2 = "ACGTGTACNTGCACGGANCGACTAGTCTGA"
 tokenized_dna_sequence_2 = [<CLS>,<ACGTGT>,<A>,<C>,<N>,<TGCACG>,<G>,<A>,<N>,<CGACTA>,<GTCTGA>]
 ```
 
 All the transformers can therefore take sequences of up to 5994 nucleotides if there are
-no "N" inside. 
+no "N" inside.
 
 ---
 
 ## HuggingFace 🤗
 
-The collection of models presented in this repo are available on Instadeep's 
+The collection of models presented in this repo are available on Instadeep's
 huggingface spaces here: [The Nucleotide Transformers space](https://huggingface.co/collections/InstaDeepAI/nucleotide-transformer-65099cdde13ff96230f2e592)
-and [Agro Nucleotide Transformer space](https://huggingface.co/collections/InstaDeepAI/agro-nucleotide-transformer-65b25c077cd0069ad6f6d344)! Two 
-example notebooks showing how to finetune any of the models [with regular finetuning](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling.ipynb) 
-and [with LoRA](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling_with_peft.ipynb) on any of the Nucleotide Transfomer tasks are also available in HuggingFace example notebooks.
+and [Agro Nucleotide Transformer space](https://huggingface.co/collections/InstaDeepAI/agro-nucleotide-transformer-65b25c077cd0069ad6f6d344)! Two
+example notebooks showing how to finetune any of the models [with regular finetuning](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling.ipynb)
+and [with LoRA](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling_with_peft.ipynb) on any of the Nucleotide Transformer tasks are also available in HuggingFace example notebooks.
 
 ---
 
@@ -250,7 +247,7 @@ available. We also thank the Jax development team.
 
 ## Citing our works 📚
 
-If you find this repository useful in your work, please add a relevant citation to 
+If you find this repository useful in your work, please add a relevant citation to
 either of our associated papers:
 
 [The Nucleotide Transformer paper](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v2):

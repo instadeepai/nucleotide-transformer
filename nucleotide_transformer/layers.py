@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
 import haiku as hk
@@ -36,6 +37,18 @@ from nucleotide_transformer.utils import get_activation_fn
 # by key_size//2
 UPPER_FREQ = 10000
 
+@dataclass
+class RotaryEmbeddingConfig:
+    """
+    Parameters to initialize the RotaryEmbedding layer. The rescaling factor allows
+    to adapt the rotary embeddings to larger lengths than what was used for training.
+    One of this strategy is presented in the Yarn paper: https://arxiv.org/pdf/2309.00071.pdf. # noqa
+
+    Args:
+
+    """
+
+    rescaling_factor: Optional[float]
 
 class RotaryEmbedding(hk.Module):
     """
@@ -47,16 +60,34 @@ class RotaryEmbedding(hk.Module):
     def __init__(
         self,
         key_size: int,
+        rotary_embedding_config: RotaryEmbeddingConfig,
         name: Optional[str] = None,
     ):
-
         """
         Args:
             key_size: Dimension of one head.
+            rotary_embedding_config: Configuration to specify hyperparameters for
+                RotaryEmbeddig layer
+                (see RoFormer https://arxiv.org/pdf/2104.09864.pdf). It contains
+                the hyperparameters specifying the type of rotary embedding applied.
             name: Name of the layer. Defaults to None.
         """
         super().__init__(name=name)
-        self._inv_freq = 1.0 / (UPPER_FREQ ** (jnp.arange(0, key_size, 2) / key_size))
+
+        # Extract argument from the config
+        rescaling_factor = rotary_embedding_config.rescaling_factor
+
+        if rescaling_factor is None:
+            self._inv_freq = 1.0 / (
+                UPPER_FREQ ** (jnp.arange(0, key_size, 2) / key_size)
+            )
+        else:
+            updated_base = UPPER_FREQ * (
+                rescaling_factor ** (key_size / (key_size - 2))
+            )
+            self._inv_freq = 1.0 / (
+                updated_base ** (jnp.arange(0, key_size, 2) / key_size)
+            )
 
     def _compute_cos_sin_tables(
         self,
@@ -146,7 +177,7 @@ class MultiHeadAttention(hk.MultiHeadAttention):
         self,
         num_heads: int,
         key_size: int,
-        use_rotary_embedding: bool = False,
+        rotary_embedding_config: Optional[RotaryEmbeddingConfig] = None,
         add_bias_kv: bool = False,
         value_size: Optional[int] = None,
         model_size: Optional[int] = None,
@@ -156,8 +187,11 @@ class MultiHeadAttention(hk.MultiHeadAttention):
         Args:
             num_heads: Number of independent attention heads.
             key_size: The size of keys and queries used for attention.
-            use_rotary_embedding: If true, adds rotary embeddings to the key and query
-                heads (see RoFormer https://arxiv.org/pdf/2104.09864.pdf).
+            rotary_embedding_config: Configuration to specify hyperparameters for
+                RotaryEmbeddig layer
+                (see RoFormer https://arxiv.org/pdf/2104.09864.pdf). If None,
+                rotary embeddings are not used. If specified, it contains the
+                hyperparameters specifying the type of rotary embedding applied.
             add_bias_kv: If True, appends biases to key and query heads, used in ESM
                 model (https://www.biorxiv.org/content/10.1101/622803v4.full.pdf).
             value_size: Optional size of the value projection. If None, defaults
@@ -186,7 +220,7 @@ class MultiHeadAttention(hk.MultiHeadAttention):
         else:
             self._bias_k = None
             self._bias_v = None
-        self._use_rotary_embedding = use_rotary_embedding
+        self._rotary_embedding_config = rotary_embedding_config
 
     @hk.transparent
     def attention_weights(
@@ -235,9 +269,9 @@ class MultiHeadAttention(hk.MultiHeadAttention):
                     axis=-1,
                 )
 
-        if self._use_rotary_embedding:
+        if self._rotary_embedding_config:
             query_heads, key_heads = RotaryEmbedding(
-                self.key_size, name="rotary_embed"
+                self.key_size, rotary_embedding_config=self._rotary_embedding_config, name="rotary_embed"
             )(query_heads, key_heads)
 
         attention_logits = jnp.einsum("...thd,...Thd->...htT", query_heads, key_heads)
@@ -372,7 +406,7 @@ class SelfAttentionBlock(hk.Module):
         embed_dim: int,
         ffn_embed_dim: int,
         key_size: Optional[int] = None,
-        use_rotary_embedding: bool = False,
+        rotary_embedding_config: Optional[RotaryEmbeddingConfig] = None,
         add_bias_kv: bool = False,
         add_bias_fnn: bool = True,
         ffn_activation_name: str = "gelu-no-approx",
@@ -428,7 +462,7 @@ class SelfAttentionBlock(hk.Module):
             key_size=key_size,
             model_size=embed_dim,
             add_bias_kv=add_bias_kv,
-            use_rotary_embedding=use_rotary_embedding,
+            rotary_embedding_config=rotary_embedding_config,
             name="self_attention",
         )
 

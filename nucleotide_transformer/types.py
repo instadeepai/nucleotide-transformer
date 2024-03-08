@@ -20,4 +20,5 @@ from typing_extensions import TypeAlias
 Embedding: TypeAlias = jnp.ndarray
 Tokens: TypeAlias = jnp.ndarray
 AttentionMask: TypeAlias = jnp.ndarray
+SequenceMask: TypeAlias = jnp.ndarray
 TransformerOutput: TypeAlias = Dict[str, jnp.ndarray]  # type: ignore

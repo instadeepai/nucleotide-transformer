@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Implementation of the Nucleotide Transformer model in Jax."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Callable, Dict, List, Optional, Tuple
 
 import haiku as hk
@@ -23,12 +23,14 @@ import jmp
 from nucleotide_transformer.layers import (
     ESMLearnedPositionalEmbeddings,
     RobertaLMHead,
+    RotaryEmbeddingConfig,
     SelfAttentionBlock,
     TokensDropout,
 )
 from nucleotide_transformer.types import (
     AttentionMask,
     Embedding,
+    SequenceMask,
     Tokens,
     TransformerOutput,
 )
@@ -82,6 +84,9 @@ class NucleotideTransformerConfig:
         masking_prob: Masking probability (used if token dropout is enabled).
         use_gradient_checkpointing: Whether to use gradient checkpointing (checkpoint
             gradients in the forward pass to reduce the computation in the backward).
+        use_rotary_embedding: Whether to use rotary embeddings (for ESM2). Requires:
+            positional_embeddings = None.
+        rescaling_factor: Scaling factor to use for rotary embeddings.
     """
 
     alphabet_size: int
@@ -102,6 +107,7 @@ class NucleotideTransformerConfig:
     add_bias_kv: bool = False
     add_bias_ffn: bool = True
     use_rotary_embedding: bool = False
+    rescaling_factor: Optional[float] = None
     ffn_activation_name: str = "gelu-no-approx"
     use_glu_in_ffn: bool = False
     layer_norm_eps: float = 1e-5
@@ -175,6 +181,13 @@ class NucleotideTransformer(hk.Module):
                 create_offset=True,
                 name="emb_layer_norm_before",
             )
+        
+        if config.use_rotary_embedding:
+            self._rotary_embedding_config = RotaryEmbeddingConfig(
+                rescaling_factor=config.rescaling_factor
+            )
+        else:
+            self._rotary_embedding_config = None  # type: ignore
 
         # Process attention maps to save requirement into more suitable format
         attention_maps_to_save = config.attention_maps_to_save
@@ -245,6 +258,7 @@ class NucleotideTransformer(hk.Module):
                     dkey = f"attention_map_layer_{layer_idx + 1}_number_{map_number}"
                     outs[dkey] = output["attention_weights"][:, map_number + 1]
 
+
         return x, outs
 
     @hk.transparent
@@ -258,7 +272,7 @@ class NucleotideTransformer(hk.Module):
             add_bias_fnn=self._config.add_bias_ffn,
             ffn_activation_name=self._config.ffn_activation_name,
             use_glu_in_ffn=self._config.use_glu_in_ffn,
-            use_rotary_embedding=self._config.use_rotary_embedding,
+            rotary_embedding_config=self._rotary_embedding_config,
             layer_norm_eps=self._config.layer_norm_eps,
             pre_layer_norm=self._config.pre_layer_norm,
             name=f"attention_layer_{layer_idx}",
@@ -396,3 +410,187 @@ def build_nucleotide_transformer_fn(
         return outs
 
     return nucleotide_transformer_fn
+
+
+@dataclass
+class SegmentNTConfig():
+    """
+    Parameters to initialize a Segment NT modelmodel.
+
+    Args:
+        alphabet_size: Token vocabulary.
+        pad_token_id: ID of pad token.
+        mask_token_id: ID of mask token.
+        max_positions: Maximum sequence length.
+        embed_scale: Correction ratio applied to the embeddings to make up for the
+            norm difference between the input during training and inference.
+        emb_layer_norm_before: Whether to use layer norm before the first attention
+            layer.
+        attention_heads: Number of attention heads.
+        key_size: The dimension of the query, key, and values within each attention
+            head, if not specified, it is set to attention_heads//embed_dim.
+            It can be useful to set a custom key size if we want to impose the size of
+            the query, key and value tensor ( for example, tensors shaped with
+            power of 2 are more efficiently handled on TPUs ).
+            Note: Parametrizing the model with a custom key size has been done in :
+            Brown, Tom, et al. "Language models are few-shot learners."
+            Advances in neural information processing systems 33 (2020): 1877-1901.
+        embed_dim: Embedding dimension.
+        ffn_embed_dim: Feed forward embedding dimension.
+        num_layers: Number of attention blocks.
+        token_dropout: Token dropout.
+        masking_ratio: Masking ratio (used if token dropout is enabled).
+        masking_prob: Masking probability (used if token dropout is enabled).
+        use_gradient_checkpointing: Whether to use gradient checkpointing (checkpoint
+            gradients in the forward pass to reduce the computation in the backward).
+        use_rotary_embedding: Whether to use rotary embeddings (for ESM2). Requires:
+            positional_embeddings = None.
+        rescaling_factor: Scaling factor to use for rotary embeddings.
+        features: The features predicted at the nucleotide level
+    """
+
+    alphabet_size: int
+    pad_token_id: int
+    mask_token_id: int
+
+    max_positions: int = 1000
+    embed_scale: float = 1.0
+
+    # architecture
+    emb_layer_norm_before: bool = False
+    attention_heads: int = 20
+    key_size: Optional[int] = None
+    embed_dim: int = 1280
+    ffn_embed_dim: int = 5120
+    num_layers: int = 24
+    positional_embedding: Optional[str] = "learned"
+    add_bias_kv: bool = False
+    add_bias_ffn: bool = True
+    use_rotary_embedding: bool = False
+    rescaling_factor: Optional[float] = None
+    ffn_activation_name: str = "gelu-no-approx"
+    use_glu_in_ffn: bool = False
+    layer_norm_eps: float = 1e-5
+    pre_layer_norm: bool = True
+
+    # dropout
+    token_dropout: bool = False
+    masking_ratio: float = 0.1
+    masking_prob: float = 0.8
+
+    # logging
+    use_gradient_checkpointing: bool = False
+
+    # return
+    embeddings_layers_to_save: Tuple[int, ...] = ()
+    attention_maps_to_save: List[Tuple[int, int]] = field(default_factory=list)
+
+    # Segment NT
+    features: Optional[List[str]] = None
+
+    def __post_init__(self) -> None:
+        """
+        Checks that the given values are compatible.
+        """
+        if self.key_size is None:
+            if not self.embed_dim % self.attention_heads == 0:
+                raise ValueError(
+                    f"When no key size is provided, the embedding dimension should be "
+                    f"divisible by the number of heads, however provided embedding "
+                    f"dimension is {self.embed_dim} and the number of heads is "
+                    f"{self.attention_heads}."
+                )
+            self.key_size = self.embed_dim // self.attention_heads
+
+
+
+def build_nucleotide_transformer_with_head_fn(
+    model_config: SegmentNTConfig,
+    head_fn: Callable[
+        [], Callable[[jnp.ndarray, SequenceMask], Dict[str, jnp.ndarray]]
+    ],
+    compute_dtype: jnp.dtype = jnp.float32,
+    param_dtype: jnp.dtype = jnp.float32,
+    output_dtype: jnp.dtype = jnp.float32,
+    model_name: Optional[str] = None,
+) -> Callable:
+    """
+    Creates a model consisting of a nucleotide transformer model and the input head.
+
+    Args:
+        model_config: Model hyperparameters.
+        head_fn: Wrapper initializing a Classification/Regression head. The head cannot
+            be passed directly as haiku modules cannot be initialized outside
+            hk.transform.
+        compute_dtype: the type of the activations. fp16 runs faster and is lighter in
+            memory. bf16 handles better large int, and is hence more stable ( it avoids
+            float overflows ).
+        param_dtype: if compute_dtype is fp16, the model weights will be cast to fp16
+            during the forward pass anyway. So in inference mode ( not training mode ),
+            it is better to use params in fp16 if compute_dtype is fp16 too. During
+            training, it is preferable to keep parameters in float32 for better
+            numerical stability.
+        output_dtype: the output type of the model. it determines the float precioson
+            of the gradient when training the model.
+        model_name: Optional name of the model.
+
+    Example of the function being used with a classification head:
+        The classification head is wrapped inside head_fn because
+        haiku modules cannot be instantiated outside hk.transform.
+        def head_fn():
+            return SimpleClassificationHead(num_classes=num_classes)
+        finetune_forward_fn = build_esm_ia3_rescaling_with_head_fn(
+            model_config=config, head_fn=head_fn, model_name=model_name,
+        )
+        finetune_forward_fn = hk.transform(finetune_forward_fn)
+
+    Returns:
+        ESM model forward function with IA³ rescaling and indicated head.
+    """
+    # Adding final layer embedding if missing to be used as classification head input.
+    num_layers = model_config.num_layers
+    if not (num_layers in model_config.embeddings_layers_to_save):
+        emb_layers_to_save = model_config.embeddings_layers_to_save + (num_layers,)
+        model_config = replace(
+            model_config, embeddings_layers_to_save=emb_layers_to_save
+        )
+
+    policy = jmp.Policy(
+        compute_dtype=compute_dtype, param_dtype=param_dtype, output_dtype=output_dtype
+    )
+    hk.mixed_precision.set_policy(NucleotideTransformer, policy)
+
+    # Remove it in batch norm to avoid instabilities
+    norm_policy = jmp.Policy(
+        compute_dtype=jnp.float32, param_dtype=param_dtype, output_dtype=compute_dtype
+    )
+    hk.mixed_precision.set_policy(hk.BatchNorm, norm_policy)
+    hk.mixed_precision.set_policy(hk.LayerNorm, norm_policy)
+
+    def esm_fn(
+        tokens: Tokens,
+        attention_mask: Optional[AttentionMask] = None,
+        sequence_mask: Optional[SequenceMask] = None,
+    ) -> TransformerOutput:
+        """Forward pass."""
+        # Run the encoder over the inputs.
+        encoder = NucleotideTransformer(config=model_config, name=model_name)
+        outs: TransformerOutput = encoder(
+            tokens=tokens,
+            attention_mask=attention_mask,
+        )
+        embeddings = outs[f"embeddings_{num_layers}"]
+
+        # Define head.
+        head = head_fn()
+
+        if sequence_mask is None:
+            sequence_mask = jnp.ones_like(tokens)
+
+        head_outs = head(  # type: ignore[call-arg]
+            x=embeddings, sequence_mask=sequence_mask
+        )
+        outs.update(head_outs)
+        return outs
+
+    return esm_fn

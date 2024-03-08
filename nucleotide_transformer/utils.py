@@ -1,9 +1,9 @@
 from typing import Callable
 
 import jax
+import jax.numpy as jnp
 
-SUPPORTED_FFN_ACTIVATIONS = ["gelu", "gelu-no-approx", "relu", "swish", "silu"]
-
+SUPPORTED_FFN_ACTIVATIONS = ["gelu", "gelu-no-approx", "relu", "swish", "silu", "sin"]
 
 def get_activation_fn(activation_name: str) -> Callable:
     """
@@ -22,6 +22,8 @@ def get_activation_fn(activation_name: str) -> Callable:
         )
     if activation_name == "gelu-no-approx":
         activation_fn = lambda x: jax.nn.gelu(x, approximate=False)  # noqa: E731
+    elif activation_name == "sin":
+        activation_fn = lambda x: jnp.sin(x)  # noqa: E731
     else:
         activation_fn = getattr(jax.nn, activation_name)
     return activation_fn

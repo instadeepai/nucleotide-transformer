@@ -125,7 +125,7 @@ The transformer layers are 1-indexed, which means that calling `get_pretrained_m
 SegmentNT models leverage a Nucleotide Transformer (NT) transformer from which we removed the language model head and replaced by a 1-dimensional U-Net segmentation head to predict the location of several types of genomics elements in a sequence at a single nucleotide resolution. We present two different model variants on 14 different classes of human genomics elements in input sequences up to 30kb. These include gene (protein-coding genes, lncRNAs, 5’UTR, 3’UTR, exon, intron, splice acceptor and donor sites) and regulatory (polyA signal, tissue-invariant and tissue-specific promoters and enhancers, and CTCF-
 bound sites) elements. SegmentNT achieves superior performance over the state-of-the-art U-Net segmentation architecture, benefiting from the pre-trained weights of NT, and demonstrates zero-shot generalization up to 50kbp.
 
-<img src="imgs/segment_nt_panel1.png" alt= "Performance on downstream tasks" >
+<img src="imgs/segment_nt_panel1_screen.png" alt= "Performance on downstream tasks" >
 
 *Fig. 1: SegmentNT localizes genomics elements at nucleotide resolution.*
 

@@ -8,7 +8,7 @@ Welcome to this InstaDeep Github repository, where are featured:
 1. A collection of transformer based genomic language models from both of our research works, [The Nucleotide
 Transformer ](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) and [Agro Nucleotide Transformer](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v1).
 2. A collection of segmentation models using the Nucleotide Transformers as a backbone, allowing segmentation of a dna sequence's
-genomic elements at single-nucleotide resolution: the [Segment-NT]() models #TODO: Add link to the preprint
+genomic elements at single-nucleotide resolution: the [SegmentNT]() models #TODO: Add link to the preprint
 
 We are thrilled to open-source these works and provide the community with access to the
 code and pre-trained weights for these nine genomics language models and 2 segmentation models. Models from [The Nucleotide Transformer
@@ -26,7 +26,7 @@ a backbone encoder, to genomics with ample opportunities of their applications i
 In this repository, you will find the following:
 
 - Inference code for our models
-- Pre-trained weights for all 9 NT models and 2 Segment-NT models
+- Pre-trained weights for all 9 NT models and 2 SegmentNT models
 - Instructions for using the code and pre-trained models
 
 ---
@@ -120,14 +120,14 @@ The transformer layers are 1-indexed, which means that calling `get_pretrained_m
 
 ---
 
-## The Segment-NT Models
+## The SegmentNT Models
 
-Segment-NT models leverage a Nucleotide Transformer (NT) transformer from which we removed the language model head and replaced by a 1-dimensional U-Net segmentation head to predict the location of several types of genomics elements in a sequence at a single nucleotide resolution. We present two different model variants on 14 different classes of human genomics elements in input sequences up to 30kb. These include gene (protein-coding genes, lncRNAs, 5’UTR, 3’UTR, exon, intron, splice acceptor and donor sites) and regulatory (polyA signal, tissue-invariant and tissue-specific promoters and enhancers, and CTCF-
-bound sites) elements. Segment-NT achieves superior performance over the state-of-the-art U-Net segmentation architecture, benefiting from the pre-trained weights of NT, and demonstrates zero-shot generalization up to 50kbp.
+SegmentNT models leverage a Nucleotide Transformer (NT) transformer from which we removed the language model head and replaced by a 1-dimensional U-Net segmentation head to predict the location of several types of genomics elements in a sequence at a single nucleotide resolution. We present two different model variants on 14 different classes of human genomics elements in input sequences up to 30kb. These include gene (protein-coding genes, lncRNAs, 5’UTR, 3’UTR, exon, intron, splice acceptor and donor sites) and regulatory (polyA signal, tissue-invariant and tissue-specific promoters and enhancers, and CTCF-
+bound sites) elements. SegmentNT achieves superior performance over the state-of-the-art U-Net segmentation architecture, benefiting from the pre-trained weights of NT, and demonstrates zero-shot generalization up to 50kbp.
 
 <img src="imgs/segment_nt_panel1.png" alt= "Performance on downstream tasks" width="800" height="800">
 
-*Fig. 1: Segment-NT localizes genomics elements at nucleotide resolution.*
+*Fig. 1: SegmentNT localizes genomics elements at nucleotide resolution.*
 
 #### Get started 🚀
 
@@ -139,7 +139,7 @@ To use the code and pre-trained models, simply:
 You can then download and infer on a sequence with any of our models in only a few
 lines of codes:
 
-⚠️ The Segment-NT models have been trained on a sequences of 30,000 nucleotides, or 5001 tokens (accounting for the CLS token). However, Segment-NT has been shown to generalize up to sequences of 50,000 bp. For training on 30,000 bps, which is a length
+⚠️ The SegmentNT models have been trained on a sequences of 30,000 nucleotides, or 5001 tokens (accounting for the CLS token). However, SegmentNT has been shown to generalize up to sequences of 50,000 bp. For training on 30,000 bps, which is a length
 superior than the maximum length of 2048 6-mers tokens that the nucleotide transformer can handle, Yarn rescaling is employed.
 By default, the `rescaling factor` is set to the one used during the training. In case you need to infer on sequences between 30kbp and 50kbp, make sure to pass the `rescaling_factor` argument in the `get_pretrained_segment_nt_model` function with
 the value `rescaling_factor = max_num_nucleotides / max_num_tokens_nt` where `num_dna_tokens_inference` is the number of tokens at inference (i.e 6669 for a sequence of 40008 base pairs) and `max_num_tokens_nt` is the max number of tokens on which the backbone nucleotide-transformer was trained on, i.e `2048`.
@@ -273,7 +273,7 @@ either of our associated papers:
 }
 ```
 
-[Segment-NT paper]() #TODO: Add link to preprint and bibtex citation:
+[SegmentNT paper]() #TODO: Add link to preprint and bibtex citation:
 ```bibtex
 
 ```

@@ -1,4 +1,4 @@
-# Nucleotide Transformers and Segment-NT
+# Nucleotide Transformers and SegmentNT
 
 [![Python Version](https://img.shields.io/badge/python-3.8-blue.svg)](https://docs.python.org/3.8/library/index.html)
 [![Jax Version](https://img.shields.io/badge/jax-0.3.25-informational)](https://jax.readthedocs.io/en/latest/)

@@ -122,10 +122,8 @@ The transformer layers are 1-indexed, which means that calling `get_pretrained_m
 
 ## The Segment-NT Models
 
-Segment-NT models leverage a Nucleotide Transformer (NT) transformer from which we removed the language model head and replaced by a 1-dimensional U-Net segmentation head to predict the location of several types of genomics elements in a sequence at a single nucleotide resolution. We trained four different model variants on 14 different classes of human genomics elements in input sequences up to 30kb. These include gene (protein-coding genes, lncRNAs, 5’UTR, 3’UTR, exon, intron, splice acceptor and donor sites) and regulatory (polyA signal, tissue-invariant and tissue-specific promoters and enhancers, and CTCF-
-bound sites) elements. Segment-NT achieves superior performance over the state-of-the-art U-Net
-segmentation architecture, benefiting from the pre-trained weights of NT, and demonstrates zero-
-shot generalization up to 50kbp.
+Segment-NT models leverage a Nucleotide Transformer (NT) transformer from which we removed the language model head and replaced by a 1-dimensional U-Net segmentation head to predict the location of several types of genomics elements in a sequence at a single nucleotide resolution. We present two different model variants on 14 different classes of human genomics elements in input sequences up to 30kb. These include gene (protein-coding genes, lncRNAs, 5’UTR, 3’UTR, exon, intron, splice acceptor and donor sites) and regulatory (polyA signal, tissue-invariant and tissue-specific promoters and enhancers, and CTCF-
+bound sites) elements. Segment-NT achieves superior performance over the state-of-the-art U-Net segmentation architecture, benefiting from the pre-trained weights of NT, and demonstrates zero-shot generalization up to 50kbp.
 
 <img src="imgs/segment_nt_panel1.png" alt= "Performance on downstream tasks" width="800" height="800">
 
@@ -229,7 +227,7 @@ no "N" inside.
 
 ## HuggingFace 🤗
 
-The collection of models presented in this repo are available on Instadeep's
+The collection of models presented in this repository are available on Instadeep's
 huggingface spaces here: [The Nucleotide Transformers space](https://huggingface.co/collections/InstaDeepAI/nucleotide-transformer-65099cdde13ff96230f2e592)
 and [Agro Nucleotide Transformer space](https://huggingface.co/collections/InstaDeepAI/agro-nucleotide-transformer-65b25c077cd0069ad6f6d344)! Two
 example notebooks showing how to finetune any of the models [with regular finetuning](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling.ipynb)

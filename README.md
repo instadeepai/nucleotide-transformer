@@ -239,10 +239,13 @@ no "N" inside.
 
 The collection of models presented in this repository are available on Instadeep's
 huggingface spaces here: [The Nucleotide Transformers space](https://huggingface.co/collections/InstaDeepAI/nucleotide-transformer-65099cdde13ff96230f2e592)
-and [Agro Nucleotide Transformer space](https://huggingface.co/collections/InstaDeepAI/agro-nucleotide-transformer-65b25c077cd0069ad6f6d344)! Two
+and [Agro Nucleotide Transformer space](https://huggingface.co/collections/InstaDeepAI/agro-nucleotide-transformer-65b25c077cd0069ad6f6d344)!
+
+- **Nucleotide Transformer**: Two
 example notebooks showing how to finetune any of the models [with regular finetuning](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling.ipynb)
 and [with LoRA](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling_with_peft.ipynb) on any of the Nucleotide Transformer tasks are also available in HuggingFace example notebooks.
-An additional [inference notebook](https://colab.research.google.com/#fileId=https%3A//huggingface.co/InstaDeepAI/segment_nt/blob/main/inference_segment_nt.ipynb) shows how to use the torch [SegmentNT model](https://huggingface.co/InstaDeepAI/segment_nt)
+- **SegmentNT**:
+An [inference notebook](https://colab.research.google.com/#fileId=https%3A//huggingface.co/InstaDeepAI/segment_nt/blob/main/inference_segment_nt.ipynb) shows how to use the torch [SegmentNT model](https://huggingface.co/InstaDeepAI/segment_nt)
 to infer on a given 50kb sequence.
 
 ---

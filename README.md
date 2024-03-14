@@ -230,7 +230,7 @@ dna_sequence_2 = "ACGTGTACNTGCACGGANCGACTAGTCTGA"
 tokenized_dna_sequence_2 = [<CLS>,<ACGTGT>,<A>,<C>,<N>,<TGCACG>,<G>,<A>,<N>,<CGACTA>,<GTCTGA>]
 ```
 
-All the transformers can therefore take sequences of up to 5994 nucleotides if there are
+All the v1 and v2 transformers can therefore take sequences of up to 5994 and 12282 nucleotides respectively if there are
 no "N" inside.
 
 ---

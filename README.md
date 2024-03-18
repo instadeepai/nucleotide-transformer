@@ -146,6 +146,7 @@ the value `rescaling_factor = max_num_nucleotides / max_num_tokens_nt` where `nu
 
 🔍 The notebook `examples/inference_segment_nt.ipynb` showcases how to infer on a 50kb sequence and plot the probabilities to reproduce the Fig.3 of the paper.
 
+🚧 The SegmentNT models do not handle any "N" in the input sequence because each nucleotides need to be tokenized as 6-mers, which can not be the case when using sequences containing one or multiple "N" base pairs.
 
 ```python
 import haiku as hk

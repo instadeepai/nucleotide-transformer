@@ -5,6 +5,7 @@ import jax.numpy as jnp
 
 SUPPORTED_FFN_ACTIVATIONS = ["gelu", "gelu-no-approx", "relu", "swish", "silu", "sin"]
 
+
 def get_activation_fn(activation_name: str) -> Callable:
     """
     Return activation fn given its name.

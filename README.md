@@ -289,7 +289,7 @@ either of our associated papers:
 }
 ```
 
-[SegmentNT paper](https://www.biorxiv.org/content/biorxiv/early/2024/03/15/2024.03.14.584712.full.pdf) 
+[SegmentNT paper](https://www.biorxiv.org/content/biorxiv/early/2024/03/15/2024.03.14.584712.full.pdf)
 ```bibtex
 @article{de2024segmentnt,
   title={SegmentNT: annotating the genome at single-nucleotide resolution with DNA foundation models},

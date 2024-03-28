@@ -563,8 +563,6 @@ class SelfAttentionBlock(hk.Module):
         else:
             x = output["embeddings"]
             x = res + x
-        print(f"Uses pre layer norm: {self._pre_layer_norm}")
-        print(f"Out of pre layer norm (or not): {x}")
 
         # MLP
         if not self._pre_layer_norm:

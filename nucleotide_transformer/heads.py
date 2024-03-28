@@ -1,5 +1,4 @@
-import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import haiku as hk
 import jax
@@ -57,7 +56,7 @@ class DownSample1D(hk.Module):
         self._activation_fn = get_activation_fn(activation_name=activation_fn)
 
     def __call__(self, x: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
-        for i, conv_layer in enumerate(self._conv_layers):
+        for _, conv_layer in enumerate(self._conv_layers):
             x = self._activation_fn(conv_layer(x))
         hidden = x
         x = self._avg_pool(hidden)
@@ -106,7 +105,7 @@ class UpSample1D(hk.Module):
         self._activation_fn = get_activation_fn(activation_name=activation_fn)
 
     def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
-        for i, conv_layer in enumerate(self._conv_layers):
+        for _, conv_layer in enumerate(self._conv_layers):
             x = self._activation_fn(conv_layer(x))
         x = jax.image.resize(
             x,
@@ -238,8 +237,6 @@ class UNET1DSegmentationHead(hk.Module):
 
         x = self._final_block(x)
         return x
-
-
 
 
 class UNetHead(hk.Module):

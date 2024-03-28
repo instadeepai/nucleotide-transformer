@@ -52,7 +52,11 @@ def _get_dir() -> str:
 
 
 def download_from_s3_bucket(
-    s3_client: boto3.session.Session, bucket: str, key: str, filename: str, verbose: bool = True,
+    s3_client: boto3.session.Session,
+    bucket: str,
+    key: str,
+    filename: str,
+    verbose: bool = True,
 ) -> None:
     """
     Download data from the s3 bucket and display downloading progression bar.
@@ -71,7 +75,9 @@ def download_from_s3_bucket(
     object_size = s3_client.head_object(**kwargs)["ContentLength"]
 
     if verbose:
-        with tqdm.tqdm(total=object_size, unit="B", unit_scale=True, desc=filename) as pbar:
+        with tqdm.tqdm(
+            total=object_size, unit="B", unit_scale=True, desc=filename
+        ) as pbar:
             with open(filename, "wb") as f:
                 s3_client.download_fileobj(
                     Bucket=bucket,
@@ -90,7 +96,9 @@ def download_from_s3_bucket(
             )
 
 
-def download_ckpt_and_hyperparams(model_name: str, verbose: bool = True) -> Tuple[hk.Params, Dict[str, Any]]:
+def download_ckpt_and_hyperparams(
+    model_name: str, verbose: bool = True
+) -> Tuple[hk.Params, Dict[str, Any]]:
     """
     Download checkpoint and hyperparams on kao datacenter.
 
@@ -140,7 +148,7 @@ def download_ckpt_and_hyperparams(model_name: str, verbose: bool = True) -> Tupl
             bucket=bucket,
             key=f"checkpoints/{model_name}/hyperparams.json",
             filename=hyperparams_save_dir,
-            verbose=verbose
+            verbose=verbose,
         )
 
         download_from_s3_bucket(
@@ -148,7 +156,7 @@ def download_ckpt_and_hyperparams(model_name: str, verbose: bool = True) -> Tupl
             bucket=bucket,
             key=f"checkpoints/{model_name}/ckpt.joblib",
             filename=params_save_dir,
-            verbose=verbose
+            verbose=verbose,
         )
 
         # Load locally
@@ -159,6 +167,7 @@ def download_ckpt_and_hyperparams(model_name: str, verbose: bool = True) -> Tupl
             params = joblib.load(f)
 
         return params, hyperparams
+
 
 def rename_modules_dcnuc(parameters: hk.Params, model_name: str) -> hk.Params:
     """
@@ -189,7 +198,6 @@ def rename_modules_dcnuc(parameters: hk.Params, model_name: str) -> hk.Params:
         parameters[new_name] = parameters.pop(layer_name)
 
     return parameters
-
 
 
 def get_pretrained_model(
@@ -254,7 +262,7 @@ def get_pretrained_model(
         "100M_multi_species_v2",
         "250M_multi_species_v2",
         "500M_multi_species_v2",
-        "1B_agro_nt"
+        "1B_agro_nt",
     ]
 
     if not (model_name in supported_models):
@@ -339,8 +347,8 @@ def get_pretrained_model(
         masking_ratio=hyperparams["masking_ratio"],
         masking_prob=hyperparams["masking_prob"],
         # embeddings to save
-        embeddings_layers_to_save=embeddings_layers_to_save,
-        attention_maps_to_save=attention_maps_to_save,
+        embeddings_layers_to_save=embeddings_layers_to_save,  # type: ignore
+        attention_maps_to_save=attention_maps_to_save,  # type: ignore
     )
 
     # NOTE: module names are changed here, to validate !
@@ -372,7 +380,6 @@ def rename_modules_segment_nt(parameters: hk.Params, model_name: str) -> hk.Para
     for layer_name in list(parameters.keys()):
         new_name = layer_name.replace("dcnuc_v2_500M_multi_species", model_name)
         new_name = new_name.replace("u_net_head", model_name + "_1")
-        
 
         parameters[new_name] = parameters.pop(layer_name)
 
@@ -392,18 +399,18 @@ def get_pretrained_segment_nt_model(
     hk.Params, Callable, FixedSizeNucleotidesKmersTokenizer, NucleotideTransformerConfig
 ]:
     """
-    Create a Haiku Segment-NT model by downloading pre-trained weights and 
-    hyperparameters. Segment NT models have ESM-like architectures with a UNet 
+    Create a Haiku Segment-NT model by downloading pre-trained weights and
+    hyperparameters. Segment NT models have ESM-like architectures with a UNet
     segmentation head on top.
 
     Args:
         model_name: Name of the model.
         rescaling_factor: The rescaling factor that is applied to the rotary embeddings
-            module as described in https://arxiv.org/abs/2309.00071. This rescaling 
-            factor is to be specified only if inference is done on sequences longer 
+            module as described in https://arxiv.org/abs/2309.00071. This rescaling
+            factor is to be specified only if inference is done on sequences longer
             than the training sequence length, i.e 30kb, because the rescaling
-            factor used to train on 30kb is already used by default. If this is the 
-            case, the rescaling factor s should be s=L'/L with L' the inference length 
+            factor used to train on 30kb is already used by default. If this is the
+            case, the rescaling factor s should be s=L'/L with L' the inference length
             and L=2048.
         compute_dtype: the type of the activations. fp16 runs faster and is lighter in
             memory. bf16 handles better large int, and is hence more stable ( it avoids
@@ -442,7 +449,6 @@ def get_pretrained_segment_nt_model(
     supported_models = [
         "segment_nt",
         "segment_nt_multi_species",
-        
     ]
 
     if not (model_name in supported_models):
@@ -493,7 +499,7 @@ def get_pretrained_segment_nt_model(
         positional_embedding = hyperparams["positional_embedding"]
     else:
         positional_embedding = "learned"
-    
+
     training_rescaling_factor = hyperparams["rescaling_factor"]
 
     if rescaling_factor is None:
@@ -503,8 +509,6 @@ def get_pretrained_segment_nt_model(
     else:
         inference_rescaling_factor = rescaling_factor
 
-
-    
     genomic_features = hyperparams["features"]
 
     # Get config
@@ -532,11 +536,11 @@ def get_pretrained_segment_nt_model(
         masking_ratio=hyperparams["masking_ratio"],
         masking_prob=hyperparams["masking_prob"],
         # embeddings to save
-        embeddings_layers_to_save=embeddings_layers_to_save,
-        attention_maps_to_save=attention_maps_to_save,
+        embeddings_layers_to_save=embeddings_layers_to_save,  # type: ignore
+        attention_maps_to_save=attention_maps_to_save,  # type: ignore
         # Rotary embeddings rescaling
         rescaling_factor=inference_rescaling_factor,
-        features=genomic_features
+        features=genomic_features,
     )
 
     # NOTE: module names are changed here, to validate !
@@ -548,7 +552,7 @@ def get_pretrained_segment_nt_model(
         return UNetHead(
             num_features=len(genomic_features),
             embed_dimension=config.embed_dim,
-            name=full_model_name
+            name=full_model_name,
         )
 
     forward_fn = build_nucleotide_transformer_with_head_fn(

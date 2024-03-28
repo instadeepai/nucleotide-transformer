@@ -37,6 +37,7 @@ from nucleotide_transformer.utils import get_activation_fn
 # by key_size//2
 UPPER_FREQ = 10000
 
+
 @dataclass
 class RotaryEmbeddingConfig:
     """
@@ -49,6 +50,7 @@ class RotaryEmbeddingConfig:
     """
 
     rescaling_factor: Optional[float]
+
 
 class RotaryEmbedding(hk.Module):
     """
@@ -271,7 +273,9 @@ class MultiHeadAttention(hk.MultiHeadAttention):
 
         if self._rotary_embedding_config:
             query_heads, key_heads = RotaryEmbedding(
-                self.key_size, rotary_embedding_config=self._rotary_embedding_config, name="rotary_embed"
+                self.key_size,
+                rotary_embedding_config=self._rotary_embedding_config,
+                name="rotary_embed",
             )(query_heads, key_heads)
 
         attention_logits = jnp.einsum("...thd,...Thd->...htT", query_heads, key_heads)
@@ -559,6 +563,8 @@ class SelfAttentionBlock(hk.Module):
         else:
             x = output["embeddings"]
             x = res + x
+        print(f"Uses pre layer norm: {self._pre_layer_norm}")
+        print(f"Out of pre layer norm (or not): {x}")
 
         # MLP
         if not self._pre_layer_norm:

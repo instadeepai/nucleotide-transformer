@@ -181,7 +181,7 @@ class NucleotideTransformer(hk.Module):
                 create_offset=True,
                 name="emb_layer_norm_before",
             )
-        
+
         if config.use_rotary_embedding:
             self._rotary_embedding_config = RotaryEmbeddingConfig(
                 rescaling_factor=config.rescaling_factor
@@ -258,7 +258,6 @@ class NucleotideTransformer(hk.Module):
                     dkey = f"attention_map_layer_{layer_idx + 1}_number_{map_number}"
                     outs[dkey] = output["attention_weights"][:, map_number + 1]
 
-
         return x, outs
 
     @hk.transparent
@@ -300,6 +299,7 @@ class NucleotideTransformer(hk.Module):
 
         # Compute embeddings
         x = self._embed_layer(tokens)
+
         # Tokens dropout if needed
         if self._config.token_dropout:
             x = TokensDropout(
@@ -337,6 +337,8 @@ class NucleotideTransformer(hk.Module):
             attention_mask = build_padding_attention_mask(
                 tokens=tokens, pad_token_id=self._config.pad_token_id
             )
+
+        print(f"Before attention blocks: {x}")
 
         # construct a tower of attention layers
         x, outs = self.apply_attention_blocks(
@@ -413,95 +415,16 @@ def build_nucleotide_transformer_fn(
 
 
 @dataclass
-class SegmentNTConfig():
+class SegmentNTConfig(NucleotideTransformerConfig):
     """
-    Parameters to initialize a Segment NT modelmodel.
+    Parameters to initialize a Segment NT model. The only supplementary argument is the
+    genomic features inferred.
 
     Args:
-        alphabet_size: Token vocabulary.
-        pad_token_id: ID of pad token.
-        mask_token_id: ID of mask token.
-        max_positions: Maximum sequence length.
-        embed_scale: Correction ratio applied to the embeddings to make up for the
-            norm difference between the input during training and inference.
-        emb_layer_norm_before: Whether to use layer norm before the first attention
-            layer.
-        attention_heads: Number of attention heads.
-        key_size: The dimension of the query, key, and values within each attention
-            head, if not specified, it is set to attention_heads//embed_dim.
-            It can be useful to set a custom key size if we want to impose the size of
-            the query, key and value tensor ( for example, tensors shaped with
-            power of 2 are more efficiently handled on TPUs ).
-            Note: Parametrizing the model with a custom key size has been done in :
-            Brown, Tom, et al. "Language models are few-shot learners."
-            Advances in neural information processing systems 33 (2020): 1877-1901.
-        embed_dim: Embedding dimension.
-        ffn_embed_dim: Feed forward embedding dimension.
-        num_layers: Number of attention blocks.
-        token_dropout: Token dropout.
-        masking_ratio: Masking ratio (used if token dropout is enabled).
-        masking_prob: Masking probability (used if token dropout is enabled).
-        use_gradient_checkpointing: Whether to use gradient checkpointing (checkpoint
-            gradients in the forward pass to reduce the computation in the backward).
-        use_rotary_embedding: Whether to use rotary embeddings (for ESM2). Requires:
-            positional_embeddings = None.
-        rescaling_factor: Scaling factor to use for rotary embeddings.
         features: The features predicted at the nucleotide level
     """
 
-    alphabet_size: int
-    pad_token_id: int
-    mask_token_id: int
-
-    max_positions: int = 1000
-    embed_scale: float = 1.0
-
-    # architecture
-    emb_layer_norm_before: bool = False
-    attention_heads: int = 20
-    key_size: Optional[int] = None
-    embed_dim: int = 1280
-    ffn_embed_dim: int = 5120
-    num_layers: int = 24
-    positional_embedding: Optional[str] = "learned"
-    add_bias_kv: bool = False
-    add_bias_ffn: bool = True
-    use_rotary_embedding: bool = False
-    rescaling_factor: Optional[float] = None
-    ffn_activation_name: str = "gelu-no-approx"
-    use_glu_in_ffn: bool = False
-    layer_norm_eps: float = 1e-5
-    pre_layer_norm: bool = True
-
-    # dropout
-    token_dropout: bool = False
-    masking_ratio: float = 0.1
-    masking_prob: float = 0.8
-
-    # logging
-    use_gradient_checkpointing: bool = False
-
-    # return
-    embeddings_layers_to_save: Tuple[int, ...] = ()
-    attention_maps_to_save: List[Tuple[int, int]] = field(default_factory=list)
-
-    # Segment NT
     features: Optional[List[str]] = None
-
-    def __post_init__(self) -> None:
-        """
-        Checks that the given values are compatible.
-        """
-        if self.key_size is None:
-            if not self.embed_dim % self.attention_heads == 0:
-                raise ValueError(
-                    f"When no key size is provided, the embedding dimension should be "
-                    f"divisible by the number of heads, however provided embedding "
-                    f"dimension is {self.embed_dim} and the number of heads is "
-                    f"{self.attention_heads}."
-                )
-            self.key_size = self.embed_dim // self.attention_heads
-
 
 
 def build_nucleotide_transformer_with_head_fn(

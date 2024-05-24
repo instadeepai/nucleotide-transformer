@@ -338,8 +338,6 @@ class NucleotideTransformer(hk.Module):
                 tokens=tokens, pad_token_id=self._config.pad_token_id
             )
 
-        print(f"Before attention blocks: {x}")
-
         # construct a tower of attention layers
         x, outs = self.apply_attention_blocks(
             x=x,

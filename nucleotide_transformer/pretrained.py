@@ -142,7 +142,7 @@ def download_ckpt_and_hyperparams(
 
         # Download params and hyperparams
         bucket = "nucleotide-transformer"
-        print(f"checkpoints/{model_name}/hyperparams.json")
+        print("Downloading hyperparameters file...")
         download_from_s3_bucket(
             s3_client=s3_client,
             bucket=bucket,
@@ -151,6 +151,7 @@ def download_ckpt_and_hyperparams(
             verbose=verbose,
         )
 
+        print("Downloading model weights...")
         download_from_s3_bucket(
             s3_client=s3_client,
             bucket=bucket,
@@ -158,6 +159,7 @@ def download_ckpt_and_hyperparams(
             filename=params_save_dir,
             verbose=verbose,
         )
+        print("Model weights downloaded.")
 
         # Load locally
         with open(hyperparams_save_dir, "rb") as f:
@@ -208,6 +210,7 @@ def get_pretrained_model(
     embeddings_layers_to_save: Tuple[int, ...] = (),
     attention_maps_to_save: Optional[Tuple[Tuple[int, int], ...]] = None,
     max_positions: int = 1024,
+    verbose: bool = True,
 ) -> Tuple[
     hk.Params, Callable, FixedSizeNucleotidesKmersTokenizer, NucleotideTransformerConfig
 ]:
@@ -231,6 +234,7 @@ def get_pretrained_model(
         embeddings_layers_to_save: Intermediate embeddings to return in the output.
         attention_maps_to_save: Intermediate attention maps to return in the output.
         max_positions: Maximum length of a token (for padding).
+        verbose: If True, displays a progress bar during the model's weights download.
 
     Returns:
         Model parameters.
@@ -271,7 +275,7 @@ def get_pretrained_model(
         )
 
     # Download weights and hyperparams
-    parameters, hyperparams = download_ckpt_and_hyperparams(model_name)
+    parameters, hyperparams = download_ckpt_and_hyperparams(model_name, verbose)
 
     if "v2" in model_name:
         tokens_to_ids, _ = compute_tokens_to_ids_v2(k_mers=hyperparams["k_for_kmers"])
@@ -395,6 +399,7 @@ def get_pretrained_segment_nt_model(
     embeddings_layers_to_save: Tuple[int, ...] = (),
     attention_maps_to_save: Optional[Tuple[Tuple[int, int], ...]] = None,
     max_positions: int = 1024,
+    verbose: bool = True,
 ) -> Tuple[
     hk.Params, Callable, FixedSizeNucleotidesKmersTokenizer, NucleotideTransformerConfig
 ]:
@@ -425,6 +430,7 @@ def get_pretrained_segment_nt_model(
         embeddings_layers_to_save: Intermediate embeddings to return in the output.
         attention_maps_to_save: Intermediate attention maps to return in the output.
         max_positions: Maximum length of a token (for padding).
+        verbose: If True, displays a progress bar during the model's weights download.
 
     Returns:
         Model parameters.
@@ -457,7 +463,7 @@ def get_pretrained_segment_nt_model(
         )
 
     # Download weights and hyperparams
-    parameters, hyperparams = download_ckpt_and_hyperparams(model_name)
+    parameters, hyperparams = download_ckpt_and_hyperparams(model_name, verbose)
 
     tokens_to_ids, _ = compute_tokens_to_ids_v2(k_mers=hyperparams["k_for_kmers"])
     tokenizer = FixedSizeNucleotidesKmersTokenizer(

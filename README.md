@@ -6,7 +6,7 @@
 
 Welcome to this InstaDeep Github repository, where are featured:
 1. A collection of transformer based genomic language models from both of our research works, [The Nucleotide
-Transformer ](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) and [Agro Nucleotide Transformer](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v1).
+Transformer ](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) and [Agro Nucleotide Transformer](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v2).
 2. A collection of segmentation models using the Nucleotide Transformers as a backbone, allowing segmentation of a dna sequence's
 genomic elements at single-nucleotide resolution: the [SegmentNT](https://www.biorxiv.org/content/10.1101/2024.03.14.584712v1.full.pdf) models.
 
@@ -77,6 +77,9 @@ parameters, forward_fn, tokenizer, config = get_pretrained_model(
     model_name="500M_human_ref",
     embeddings_layers_to_save=(20,),
     max_positions=32,
+    # If the progress bar gets stuck at the start of the model wieghts download, 
+    # you can set verbose=False to download without the progress bar.
+    verbose=True
 )
 forward_fn = hk.transform(forward_fn)
 
@@ -176,6 +179,9 @@ parameters, forward_fn, tokenizer, config = get_pretrained_segment_nt_model(
     embeddings_layers_to_save=(29,),
     attention_maps_to_save=((1, 4), (7, 10)),
     max_positions=max_num_nucleotides + 1,
+    # If the progress bar gets stuck at the start of the model wieghts download, 
+    # you can set verbose=False to download without the progress bar.
+    verbose=True
 )
 forward_fn = hk.transform(forward_fn)
 apply_fn = jax.pmap(forward_fn.apply, devices=devices, donate_argnums=(0,))
@@ -277,7 +283,7 @@ either of our associated papers:
 ```
 
 
-[Agro Nucleotide Transformer paper](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v1):
+[Agro Nucleotide Transformer paper](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v2):
 ```bibtex
 @article{mendoza2023foundational,
   title={A Foundational Large Language Model for Edible Plant Genomes},

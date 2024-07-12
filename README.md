@@ -265,7 +265,7 @@ Furthermore, we extend gratitude to all those who deposit experimental data in p
 those who maintain these databases, and those who make analytical and predictive methods freely
 available. We also thank the Jax development team.
 
-## Citing our works 📚
+## Citing our work 📚
 
 If you find this repository useful in your work, please add a relevant citation to
 either of our associated papers:
@@ -283,15 +283,17 @@ either of our associated papers:
 ```
 
 
-[Agro Nucleotide Transformer paper](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v2):
+[Agro Nucleotide Transformer paper](https://www.nature.com/articles/s42003-024-06465-2):
 ```bibtex
-@article{mendoza2023foundational,
-  title={A Foundational Large Language Model for Edible Plant Genomes},
-  author={Mendoza-Revilla, Javier and Trop, Evan and Gonzalez, Liam and Roller, Masa and Dalla-Torre, Hugo and de Almeida, Bernardo P and Richard, Guillaume and Caton, Jonathan and Lopez Carranza, Nicolas and Skwark, Marcin and others},
-  journal={bioRxiv},
-  pages={2023--10},
-  year={2023},
-  publisher={Cold Spring Harbor Laboratory}
+@article{mendoza2024foundational,
+  title={A foundational large language model for edible plant genomes},
+  author={Mendoza-Revilla, Javier and Trop, Evan and Gonzalez, Liam and Roller, Ma{\v{s}}a and Dalla-Torre, Hugo and de Almeida, Bernardo P and Richard, Guillaume and Caton, Jonathan and Lopez Carranza, Nicolas and Skwark, Marcin and others},
+  journal={Communications Biology},
+  volume={7},
+  number={1},
+  pages={835},
+  year={2024},
+  publisher={Nature Publishing Group UK London}
 }
 ```
 

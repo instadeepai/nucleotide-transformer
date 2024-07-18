@@ -14,7 +14,7 @@ setup(
     url="https://github.com/instadeepai/nucleotide-transformer",
     license="CC BY-NC-SA 4.0",
     author="InstaDeep Ltd",
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     description="The Nucleotide Transformer: Building and Evaluating "
     "Robust Foundation Models for Human Genomics ",
     long_description=long_description,
@@ -25,11 +25,11 @@ setup(
         "jaxlib>=0.3.25",
         "dm-haiku>=0.0.9",
         "numpy>=1.23.5",
-        "boto3>=1.24.28",
         "typing_extensions>=3.10.0",
         "joblib>=1.2.0",
         "tqdm>=4.56.0",
         "regex>=2022.1.18",
+        "huggingface-hub>=0.23.0",
     ],
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",

@@ -38,7 +38,21 @@ DEFAULT_CACHE_DIR = "~/.cache"
 
 # Map each model to its HuggingFace repository
 MODEL_TO_REPO_MAPPING = {
-    "50M_multi_species_v2": "nucleotide-transformer-v2-50m-multi-species"
+    # SegmentNT
+    "segment_nt": "segment_nt",
+    "segment_nt_multi_species": "segment_nt_multi_species",
+    # AgroNT
+    "1B_agro_nt": "agro-nucleotide-transformer-1b",
+    # V2 models
+    "50M_multi_species_v2": "nucleotide-transformer-v2-50m-multi-species",
+    "100M_multi_species_v2": "nucleotide-transformer-v2-100m-multi-species",
+    "250M_multi_species_v2": "nucleotide-transformer-v2-250m-multi-species",
+    "500M_multi_species_v2": "nucleotide-transformer-v2-500m-multi-species",
+    # V1 models
+    "500M_human_ref": "nucleotide-transformer-500m-human-ref",
+    "500M_1000G": "nucleotide-transformer-500m-1000G",
+    "2B5_1000G": "nucleotide-transformer-2.5b-1000G",
+    "2B5_multi_species": "nucleotide-transformer-2.5b-multi-species",
 }
 
 

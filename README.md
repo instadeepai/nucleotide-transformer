@@ -77,9 +77,6 @@ parameters, forward_fn, tokenizer, config = get_pretrained_model(
     model_name="500M_human_ref",
     embeddings_layers_to_save=(20,),
     max_positions=32,
-    # If the progress bar gets stuck at the start of the model wieghts download, 
-    # you can set verbose=False to download without the progress bar.
-    verbose=True
 )
 forward_fn = hk.transform(forward_fn)
 
@@ -179,9 +176,6 @@ parameters, forward_fn, tokenizer, config = get_pretrained_segment_nt_model(
     embeddings_layers_to_save=(29,),
     attention_maps_to_save=((1, 4), (7, 10)),
     max_positions=max_num_nucleotides + 1,
-    # If the progress bar gets stuck at the start of the model wieghts download, 
-    # you can set verbose=False to download without the progress bar.
-    verbose=True
 )
 forward_fn = hk.transform(forward_fn)
 apply_fn = jax.pmap(forward_fn.apply, devices=devices, donate_argnums=(0,))

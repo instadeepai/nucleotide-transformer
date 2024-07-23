@@ -16,13 +16,10 @@ import json
 import os
 from typing import Any, Callable, Dict, Optional, Tuple
 
-import boto3
 import haiku as hk
 import jax.numpy as jnp
 import joblib
-import tqdm
-from botocore import UNSIGNED
-from botocore.config import Config
+from huggingface_hub import hf_hub_download
 
 from nucleotide_transformer.heads import UNetHead
 from nucleotide_transformer.model import (
@@ -39,6 +36,25 @@ from nucleotide_transformer.tokenizers import (
 ENV_XDG_CACHE_HOME = "XDG_CACHE_HOME"
 DEFAULT_CACHE_DIR = "~/.cache"
 
+# Map each model to its HuggingFace repository
+MODEL_TO_REPO_MAPPING = {
+    # SegmentNT
+    "segment_nt": "segment_nt",
+    "segment_nt_multi_species": "segment_nt_multi_species",
+    # AgroNT
+    "1B_agro_nt": "agro-nucleotide-transformer-1b",
+    # V2 models
+    "50M_multi_species_v2": "nucleotide-transformer-v2-50m-multi-species",
+    "100M_multi_species_v2": "nucleotide-transformer-v2-100m-multi-species",
+    "250M_multi_species_v2": "nucleotide-transformer-v2-250m-multi-species",
+    "500M_multi_species_v2": "nucleotide-transformer-v2-500m-multi-species",
+    # V1 models
+    "500M_human_ref": "nucleotide-transformer-500m-human-ref",
+    "500M_1000G": "nucleotide-transformer-500m-1000G",
+    "2B5_1000G": "nucleotide-transformer-2.5b-1000G",
+    "2B5_multi_species": "nucleotide-transformer-2.5b-multi-species",
+}
+
 
 def _get_dir() -> str:
     """
@@ -51,54 +67,7 @@ def _get_dir() -> str:
     )
 
 
-def download_from_s3_bucket(
-    s3_client: boto3.session.Session,
-    bucket: str,
-    key: str,
-    filename: str,
-    verbose: bool = True,
-) -> None:
-    """
-    Download data from the s3 bucket and display downloading progression bar.
-
-    Args:
-        s3_client: Boto3 s3 client
-        bucket: Bucket name.
-        key: Path towards file in the bucket.
-        filename: Path to save file locally.
-        verbose: Whether or not to print the progress bar during the download.
-    """
-    kwargs = {
-        "Bucket": bucket,
-        "Key": key,
-    }
-    object_size = s3_client.head_object(**kwargs)["ContentLength"]
-
-    if verbose:
-        with tqdm.tqdm(
-            total=object_size, unit="B", unit_scale=True, desc=filename
-        ) as pbar:
-            with open(filename, "wb") as f:
-                s3_client.download_fileobj(
-                    Bucket=bucket,
-                    Key=key,
-                    ExtraArgs=None,
-                    Fileobj=f,
-                    Callback=lambda bytes_transferred: pbar.update(bytes_transferred),
-                )
-    else:
-        with open(filename, "wb") as f:
-            s3_client.download_fileobj(
-                Bucket=bucket,
-                Key=key,
-                ExtraArgs=None,
-                Fileobj=f,
-            )
-
-
-def download_ckpt_and_hyperparams(
-    model_name: str, verbose: bool = True
-) -> Tuple[hk.Params, Dict[str, Any]]:
+def download_ckpt_and_hyperparams(model_name: str) -> Tuple[hk.Params, Dict[str, Any]]:
     """
     Download checkpoint and hyperparams on kao datacenter.
 
@@ -108,67 +77,36 @@ def download_ckpt_and_hyperparams(
     Returns:
         Model parameters.
         Model hyperparameters' dict.
-        verbose: Whether or not to print the progress bar during the downloads.
 
 
     """
-    # Get directories
     save_dir = os.path.join(_get_dir(), model_name)
 
-    params_save_dir = os.path.join(save_dir, "ckpt.joblib")
-    hyperparams_save_dir = os.path.join(save_dir, "hyperparams.json")
+    repo_id = f"InstaDeepAI/{MODEL_TO_REPO_MAPPING[model_name]}"
 
-    if os.path.exists(hyperparams_save_dir) and os.path.exists(params_save_dir):
-        # Load locally
-        with open(hyperparams_save_dir, "rb") as f:
-            hyperparams = json.load(f)
-
-        with open(params_save_dir, "rb") as f:
-            params = joblib.load(f)
-
-        return params, hyperparams
-
-    else:
-        os.makedirs(save_dir, exist_ok=True)
-
-        s3_endpoint = "https://s3.kao-prod.instadeep.io"
-
-        session = boto3.Session()
-        s3_client = session.client(
-            service_name="s3",
-            endpoint_url=s3_endpoint,
-            config=Config(signature_version=UNSIGNED),
+    # Download hyperparams
+    print("Downloading model's hyperparameters json file...")
+    hyperparams = json.load(
+        open(
+            hf_hub_download(
+                repo_id=repo_id,
+                filename="jax_model/hyperparams.json",
+                cache_dir=save_dir,
+            )
         )
+    )
+    print("Downloaded model's hyperparameters.")
 
-        # Download params and hyperparams
-        bucket = "nucleotide-transformer"
-        print("Downloading hyperparameters file...")
-        download_from_s3_bucket(
-            s3_client=s3_client,
-            bucket=bucket,
-            key=f"checkpoints/{model_name}/hyperparams.json",
-            filename=hyperparams_save_dir,
-            verbose=verbose,
+    # Download parameters
+    print("Downloading model's weights...")
+    params = joblib.load(
+        hf_hub_download(
+            repo_id=repo_id, filename="jax_model/pytree_ckpt.joblib", cache_dir=save_dir
         )
+    )
+    print("Downloaded model's weights...")
 
-        print("Downloading model weights...")
-        download_from_s3_bucket(
-            s3_client=s3_client,
-            bucket=bucket,
-            key=f"checkpoints/{model_name}/ckpt.joblib",
-            filename=params_save_dir,
-            verbose=verbose,
-        )
-        print("Model weights downloaded.")
-
-        # Load locally
-        with open(hyperparams_save_dir, "rb") as f:
-            hyperparams = json.load(f)
-
-        with open(params_save_dir, "rb") as f:
-            params = joblib.load(f)
-
-        return params, hyperparams
+    return params, hyperparams
 
 
 def rename_modules_dcnuc(parameters: hk.Params, model_name: str) -> hk.Params:
@@ -210,7 +148,6 @@ def get_pretrained_model(
     embeddings_layers_to_save: Tuple[int, ...] = (),
     attention_maps_to_save: Optional[Tuple[Tuple[int, int], ...]] = None,
     max_positions: int = 1024,
-    verbose: bool = True,
 ) -> Tuple[
     hk.Params, Callable, FixedSizeNucleotidesKmersTokenizer, NucleotideTransformerConfig
 ]:
@@ -234,7 +171,6 @@ def get_pretrained_model(
         embeddings_layers_to_save: Intermediate embeddings to return in the output.
         attention_maps_to_save: Intermediate attention maps to return in the output.
         max_positions: Maximum length of a token (for padding).
-        verbose: If True, displays a progress bar during the model's weights download.
 
     Returns:
         Model parameters.
@@ -275,7 +211,7 @@ def get_pretrained_model(
         )
 
     # Download weights and hyperparams
-    parameters, hyperparams = download_ckpt_and_hyperparams(model_name, verbose)
+    parameters, hyperparams = download_ckpt_and_hyperparams(model_name)
 
     if "v2" in model_name:
         tokens_to_ids, _ = compute_tokens_to_ids_v2(k_mers=hyperparams["k_for_kmers"])
@@ -399,7 +335,6 @@ def get_pretrained_segment_nt_model(
     embeddings_layers_to_save: Tuple[int, ...] = (),
     attention_maps_to_save: Optional[Tuple[Tuple[int, int], ...]] = None,
     max_positions: int = 1024,
-    verbose: bool = True,
 ) -> Tuple[
     hk.Params, Callable, FixedSizeNucleotidesKmersTokenizer, NucleotideTransformerConfig
 ]:
@@ -430,7 +365,6 @@ def get_pretrained_segment_nt_model(
         embeddings_layers_to_save: Intermediate embeddings to return in the output.
         attention_maps_to_save: Intermediate attention maps to return in the output.
         max_positions: Maximum length of a token (for padding).
-        verbose: If True, displays a progress bar during the model's weights download.
 
     Returns:
         Model parameters.
@@ -463,7 +397,7 @@ def get_pretrained_segment_nt_model(
         )
 
     # Download weights and hyperparams
-    parameters, hyperparams = download_ckpt_and_hyperparams(model_name, verbose)
+    parameters, hyperparams = download_ckpt_and_hyperparams(model_name)
 
     tokens_to_ids, _ = compute_tokens_to_ids_v2(k_mers=hyperparams["k_for_kmers"])
     tokenizer = FixedSizeNucleotidesKmersTokenizer(

@@ -158,7 +158,7 @@ from nucleotide_transformer.pretrained import get_pretrained_segment_nt_model
 # the devices.
 jax.config.update("jax_platform_name", "cpu")
 
-backend = "gpu"
+backend = "cpu"
 devices = jax.devices(backend)
 num_devices = len(devices)
 print(f"Devices found: {devices}")
@@ -180,15 +180,17 @@ parameters, forward_fn, tokenizer, config = get_pretrained_segment_nt_model(
 forward_fn = hk.transform(forward_fn)
 apply_fn = jax.pmap(forward_fn.apply, devices=devices, donate_argnums=(0,))
 
-random_key = jax.random.PRNGKey(seed=0)
-keys = jax.device_put_replicated(random_key, devices=devices)
-parameters = jax.device_put_replicated(parameters, devices=devices)
 
 # Get data and tokenize it
 sequences = ["ATTCCGATTCCGATTCCAACGGATTATTCCGATTAACCGATTCCAATT", "ATTTCTCTCTCTCTCTGAGATCGATGATTTCTCTCTCATCGAACTATG"]
 tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
 tokens_str = [b[0] for b in tokenizer.batch_tokenize(sequences)]
 tokens = jnp.asarray(tokens_ids, dtype=jnp.int32)
+
+random_key = jax.random.PRNGKey(seed=0)
+keys = jax.device_put_replicated(random_key, devices=devices)
+parameters = jax.device_put_replicated(parameters, devices=devices)
+tokens = jax.device_put_replicated(tokens, devices=devices)
 
 # Infer on the sequence
 outs = apply_fn(parameters, keys, tokens)

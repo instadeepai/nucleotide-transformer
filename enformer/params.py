@@ -63,7 +63,7 @@ def download_ckpt(model_name: str) -> Tuple[hk.Params, Dict[str, Any]]:
     assert model_name in ["segment_enformer", "segment_borzoi"]
     save_dir = os.path.join(_get_dir(model_name), model_name)
 
-    repo_id = f"InstaDeepAI/segment_enformer"
+    repo_id = f"InstaDeepAI/{model_name}"
 
     # Download parameters
     print("Downloading model's weights...")

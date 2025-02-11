@@ -18,6 +18,26 @@ from nucleotide_transformer.enformer.tokenizer import NucleotidesKmersTokenizer
 def get_pretrained_segment_borzoi_model() -> (
     Tuple[hk.Params, hk.State, Callable, NucleotidesKmersTokenizer, BorzoiConfig]
 ):
+    """
+    Loads the pretrained SegmentBorzoi model.
+
+    Returns:
+        hk.Params: Model parameters
+        hk.State: Model state
+        Callable: Haiku forward function
+        NucleotidesKmersTokenizer: Tokenizer
+        BorzoiConfig: Configuration of the Borzoi model
+
+    Example:
+        >>> import jax
+        >>> import haiku as hk
+        >>> parameters, state, forward_fn, tokenizer, config = get_pretrained_segment_borzoi_model()
+        >>> apply_fn = hk.transform_with_state(forward_fn).apply
+        >>> random_key = jax.random.PRNGKey(seed=0)
+        >>> sequences = ["A" * 524_288]
+        >>> tokens = tokenizer.batch_np_tokenize(sequences)
+        >>> outs, _ = apply_fn(parameters, state, random_key, tokens)
+    """
     config = BorzoiConfig()
     tokenizer = NucleotidesKmersTokenizer(
         k_mers=1,

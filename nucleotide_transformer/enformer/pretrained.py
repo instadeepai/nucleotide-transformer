@@ -18,6 +18,26 @@ from nucleotide_transformer.enformer.tokenizer import NucleotidesKmersTokenizer
 def get_pretrained_segment_enformer_model() -> (
     Tuple[hk.Params, hk.State, Callable, NucleotidesKmersTokenizer, EnformerConfig]
 ):
+    """
+    Loads the pretrained SegmentEnformer model.
+
+    Returns:
+        hk.Params: Model parameters
+        hk.State: Model state
+        Callable: Haiku forward function
+        NucleotidesKmersTokenizer: Tokenizer
+        EnformerConfig: Configuration of the Enformer model
+
+    Example:
+        >>> import jax
+        >>> import haiku as hk
+        >>> parameters, state, forward_fn, tokenizer, config = get_pretrained_segment_enformer_model()
+        >>> apply_fn = hk.transform_with_state(forward_fn).apply
+        >>> random_key = jax.random.PRNGKey(seed=0)
+        >>> sequences = ["A" * 196608]
+        >>> tokens = tokenizer.batch_np_tokenize(sequences)
+        >>> outs, _ = apply_fn(parameters, state, random_key, tokens)
+    """
     config = EnformerConfig()
     tokenizer = NucleotidesKmersTokenizer(
         k_mers=1,

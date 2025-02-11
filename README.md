@@ -262,10 +262,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from enformer.model import build_enformer_with_head_fn
-from enformer.heads import UNetHead
-from enformer.params import download_ckpt
-from enformer.pretrained import get_pretrained_enformer_model
+from enformer.pretrained import get_pretrained_segment_enformer_model
+from enformer.features import FEATURES
 
 # Initialize CPU as default JAX device. This makes the code robust to memory leakage on
 # the devices.
@@ -275,46 +273,14 @@ backend = "cpu"
 devices = jax.devices(backend)
 num_devices = len(devices)
 
-features = [
-    "protein_coding_gene",
-    "lncRNA",
-    "exon",
-    "intron",
-    "splice_donor",
-    "splice_acceptor",
-    "5UTR",
-    "3UTR",
-    "CTCF-bound",
-    "polyA_signal",
-    "enhancer_Tissue_specific",
-    "enhancer_Tissue_invariant",
-    "promoter_Tissue_specific",
-    "promoter_Tissue_invariant",
-]
-
-_, _, _, tokenizer, config = get_pretrained_enformer_model()
-
-def head_fn() -> hk.Module:
-    return UNetHead(
-        features=features,
-        embed_dimension=config.embed_dim,
-        nucl_per_token=config.dim_divisible_by,
-        remove_cls_token=False,
-    )
-
-forward_fn = build_enformer_with_head_fn(
-    config=config,
-    head_fn=head_fn,
-    embedding_name="embedding_transformer_tower",
-    name="Enformer",
-    compute_dtype=jnp.float32,
-)
+# Load model
+parameters, state, forward_fn, tokenizer, config = get_pretrained_segment_enformer_model()
 forward_fn = hk.transform_with_state(forward_fn)
-parameters, state = download_ckpt("segment_enformer")
 
 apply_fn = jax.pmap(forward_fn.apply, devices=devices, donate_argnums=(0,))
-
 random_key = jax.random.PRNGKey(seed=0)
+
+# Replicate over devices
 keys = jax.device_put_replicated(random_key, devices=devices)
 parameters = jax.device_put_replicated(parameters, devices=devices)
 state = jax.device_put_replicated(state, devices=devices)
@@ -334,7 +300,7 @@ outs, _ = apply_fn(parameters, state, keys, tokens)
 probabilities = np.asarray(jax.nn.softmax(logits, axis=-1))[..., -1]
 
 # Get probabilities associated with intron
-idx_intron = features.index("intron")
+idx_intron = FEATURES.index("intron")
 probabilities_intron = probabilities[..., idx_intron]
 print(f"Intron probabilities shape: {probabilities_intron.shape}")
 ```
@@ -360,10 +326,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from borzoi.borzoi_with_head import build_borzoi_fn_with_head_fn
-from borzoi.pretrained import get_pretrained_borzoi_model
-from enformer.heads import UNetHead
-from enformer.params import download_ckpt
+from borzoi.pretrained import get_pretrained_segment_borzoi_model
+from enformer.features import FEATURES
 
 # Initialize CPU as default JAX device. This makes the code robust to memory leakage on
 # the devices.
@@ -373,47 +337,13 @@ backend = "cpu"
 devices = jax.devices(backend)
 num_devices = len(devices)
 
-features = [
-    "protein_coding_gene",
-    "lncRNA",
-    "exon",
-    "intron",
-    "splice_donor",
-    "splice_acceptor",
-    "5UTR",
-    "3UTR",
-    "CTCF-bound",
-    "polyA_signal",
-    "enhancer_Tissue_specific",
-    "enhancer_Tissue_invariant",
-    "promoter_Tissue_specific",
-    "promoter_Tissue_invariant",
-]
-
-forward_fn, tokenizer, config = get_pretrained_borzoi_model()
-
-def head_fn() -> hk.Module:
-    return UNetHead(
-        features=features,
-        embed_dimension=config.embed_dim,
-        nucl_per_token=config.dim_divisible_by,
-        remove_cls_token=False,
-    )
-
-finetune_forward_fn = build_borzoi_fn_with_head_fn(
-    config=config,
-    head_fn=head_fn,
-    embedding_name="embedding",
-    name="Borzoi",
-    compute_dtype=jnp.float32,
-)
-finetune_forward_fn = hk.transform_with_state(finetune_forward_fn)
-
-parameters, state = download_ckpt("segment_borzoi")
-
-apply_fn = jax.pmap(finetune_forward_fn.apply, devices=devices, donate_argnums=(0,))
-
+# Load model
+parameters, state, forward_fn, tokenizer, config = get_pretrained_segment_borzoi_model()
+forward_fn = hk.transform_with_state(forward_fn)
+apply_fn = jax.pmap(forward_fn.apply, devices=devices, donate_argnums=(0,))
 random_key = jax.random.PRNGKey(seed=0)
+
+# Replicate over devices
 keys = jax.device_put_replicated(random_key, devices=devices)
 parameters = jax.device_put_replicated(parameters, devices=devices)
 state = jax.device_put_replicated(state, devices=devices)
@@ -425,17 +355,18 @@ tokens_str = [b[0] for b in tokenizer.batch_tokenize(sequences)]
 tokens = jnp.stack([jnp.asarray(tokens_ids, dtype=jnp.int32)] * num_devices, axis=0)
 
 # Infer
-outs, _ = apply_fn(parameters, state, keys, tokens) 
+outs, _ = apply_fn(parameters, state, keys, tokens)
 
 # Obtain the logits over the genomic features
-logits, = outs["logits"]
+(logits,) = outs["logits"]
 # Transform them on probabilities
-probabilities = np.asarray(jax.nn.softmax(logits, axis=-1))[...,-1]
+probabilities = np.asarray(jax.nn.softmax(logits, axis=-1))[..., -1]
 
 # Get probabilities associated with intron
-idx_intron = features.index("intron")
+idx_intron = FEATURES.index("intron")
 probabilities_intron = probabilities[..., idx_intron]
 print(f"Intron probabilities shape: {probabilities_intron.shape}")
+
 ```
 
 ---

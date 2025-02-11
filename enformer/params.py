@@ -12,26 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import os
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 import haiku as hk
-import jax.numpy as jnp
 import joblib
 from huggingface_hub import hf_hub_download
-
-from nucleotide_transformer.heads import UNetHead
-from nucleotide_transformer.model import (
-    NucleotideTransformerConfig,
-    SegmentNTConfig,
-    build_nucleotide_transformer_fn,
-    build_nucleotide_transformer_with_head_fn,
-)
-from nucleotide_transformer.tokenizers import (
-    FixedSizeNucleotidesKmersTokenizer,
-    compute_tokens_to_ids_v2,
-)
 
 ENV_XDG_CACHE_HOME = "XDG_CACHE_HOME"
 DEFAULT_CACHE_DIR = "~/.cache"

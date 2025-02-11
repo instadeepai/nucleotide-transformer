@@ -8,7 +8,7 @@ import numpy as np
 
 
 def _prepend_dims(x: np.ndarray, num_dims: int) -> np.ndarray:
-    return jnp.reshape(x, shape=tuple([1] * num_dims) + x.shape)
+    return jnp.reshape(x, newshape=tuple([1] * num_dims) + x.shape)
 
 
 def get_positional_features_central_mask_borzoi(

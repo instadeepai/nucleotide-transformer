@@ -5,7 +5,10 @@ from typing import Callable, Tuple
 import haiku as hk
 import jax.numpy as jnp
 
-from borzoi.model import BorzoiConfig, build_borzoi_fn
+from borzoi.model import BorzoiConfig, build_borzoi_fn, build_borzoi_fn_with_head_fn
+from enformer.features import FEATURES
+from enformer.heads import UNetHead
+from enformer.params import download_ckpt
 from enformer.tokenizer import NucleotidesKmersTokenizer
 
 BORZOI_MODEL_NAME = "Borzoi"
@@ -51,40 +54,25 @@ def get_borzoi_config_and_tokenizer() -> Tuple[
     return config, tokenizer
 
 
-def get_pretrained_borzoi_model(
-    compute_dtype: jnp.dtype = jnp.float32,
-    param_dtype: jnp.dtype = jnp.float32,
-    output_dtype: jnp.dtype = jnp.float32,
-) -> Tuple[hk.Params, hk.State, Callable, NucleotidesKmersTokenizer, BorzoiConfig]:
-    """
-    Create a Haiku Borzoi model
-
-    Args:
-        compute_dtype: the type of the activations. fp16 runs faster and is lighter in
-            memory. bf16 handles better large int, and is hence more stable ( it avoids
-            float overflows ).
-        param_dtype: if compute_dtype is fp16, the model weights will be cast to fp16
-            during the forward pass anyway. So in inference mode ( not training mode ),
-            it is better to use params in fp16 if compute_dtype is fp16 too
-        output_dtype: the output type of the model. It determines the float precioson
-            of the gradient when training the model.
-            NOTE: when training, the gradient is often accumulated in fp32, therefore
-            output_dtype need to be in fp32.
-
-    Returns:
-        Haiku function to call the model.
-        Tokenizer.
-        Model config.
-
-    """
-
+def get_pretrained_segment_borzoi_model():
     config, tokenizer = get_borzoi_config_and_tokenizer()
-    borzoi_fn = build_borzoi_fn(
+
+    def head_fn() -> hk.Module:
+        return UNetHead(
+            features=FEATURES,
+            embed_dimension=config.embed_dim,
+            nucl_per_token=config.dim_divisible_by,
+            remove_cls_token=False,
+        )
+
+    forward_fn = build_borzoi_fn_with_head_fn(
         config=config,
-        compute_dtype=compute_dtype,
-        param_dtype=param_dtype,
-        output_dtype=output_dtype,
-        name=BORZOI_MODEL_NAME,
+        head_fn=head_fn,
+        embedding_name="embedding",
+        name="Borzoi",
+        compute_dtype=jnp.float32,
     )
 
-    return borzoi_fn, tokenizer, config
+    parameters, state = download_ckpt("segment_borzoi")
+
+    return parameters, state, forward_fn, tokenizer, config

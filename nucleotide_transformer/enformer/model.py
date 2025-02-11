@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import jmp
 from typing_extensions import TypeAlias
 
-from enformer.layers import (
+from nucleotide_transformer.enformer.layers import (
     Attention,
     AttentionPool,
     ConvBlock,

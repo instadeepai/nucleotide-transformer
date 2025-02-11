@@ -5,11 +5,14 @@ from typing import Callable, Tuple
 import haiku as hk
 import jax.numpy as jnp
 
-from enformer.features import FEATURES
-from enformer.heads import UNetHead
-from enformer.model import EnformerConfig, build_enformer_with_head_fn
-from enformer.params import download_ckpt
-from enformer.tokenizer import NucleotidesKmersTokenizer
+from nucleotide_transformer.enformer.features import FEATURES
+from nucleotide_transformer.enformer.heads import UNetHead
+from nucleotide_transformer.enformer.model import (
+    EnformerConfig,
+    build_enformer_with_head_fn,
+)
+from nucleotide_transformer.enformer.params import download_ckpt
+from nucleotide_transformer.enformer.tokenizer import NucleotidesKmersTokenizer
 
 
 def get_pretrained_segment_enformer_model() -> (

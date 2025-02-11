@@ -8,8 +8,8 @@ import jax.numpy as jnp
 import jmp
 from typing_extensions import TypeAlias
 
-from borzoi.layers import ConvBlock, UNetConvBlock
-from enformer.layers import Attention, exponential_linspace_int
+from nucleotide_transformer.borzoi.layers import ConvBlock, UNetConvBlock
+from nucleotide_transformer.enformer.layers import Attention, exponential_linspace_int
 
 SequenceMask: TypeAlias = jnp.ndarray
 logger = logging.getLogger(__name__)

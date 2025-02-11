@@ -6,7 +6,7 @@ import jax
 from einops import rearrange
 from jax import numpy as jnp
 
-from borzoi.layers import get_positional_embed_borzoi
+from nucleotide_transformer.borzoi.layers import get_positional_embed_borzoi
 
 
 def get_positional_features_exponential(

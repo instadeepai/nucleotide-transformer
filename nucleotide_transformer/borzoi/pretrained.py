@@ -5,11 +5,14 @@ from typing import Callable, Tuple
 import haiku as hk
 import jax.numpy as jnp
 
-from borzoi.model import BorzoiConfig, build_borzoi_fn_with_head_fn
-from enformer.features import FEATURES
-from enformer.heads import UNetHead
-from enformer.params import download_ckpt
-from enformer.tokenizer import NucleotidesKmersTokenizer
+from nucleotide_transformer.borzoi.model import (
+    BorzoiConfig,
+    build_borzoi_fn_with_head_fn,
+)
+from nucleotide_transformer.enformer.features import FEATURES
+from nucleotide_transformer.enformer.heads import UNetHead
+from nucleotide_transformer.enformer.params import download_ckpt
+from nucleotide_transformer.enformer.tokenizer import NucleotidesKmersTokenizer
 
 
 def get_pretrained_segment_borzoi_model() -> (

@@ -289,10 +289,10 @@ tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
 tokens = jnp.stack([jnp.asarray(tokens_ids, dtype=jnp.int32)] * num_devices, axis=0)
 
 # Infer
-outs, _ = apply_fn(parameters, state, keys, tokens)
+outs, state = apply_fn(parameters, state, keys, tokens)
 
 # Obtain the logits over the genomic features
-(logits,) = outs["logits"]
+logits = outs["logits"]
 # Transform them on probabilities
 probabilities = np.asarray(jax.nn.softmax(logits, axis=-1))[..., -1]
 
@@ -351,10 +351,10 @@ tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
 tokens = jnp.stack([jnp.asarray(tokens_ids, dtype=jnp.int32)] * num_devices, axis=0)
 
 # Infer
-outs, _ = apply_fn(parameters, state, keys, tokens)
+outs, state = apply_fn(parameters, state, keys, tokens)
 
 # Obtain the logits over the genomic features
-(logits,) = outs["logits"]
+logits = outs["logits"]
 # Transform them on probabilities
 probabilities = np.asarray(jax.nn.softmax(logits, axis=-1))[..., -1]
 

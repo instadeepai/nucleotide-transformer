@@ -9,6 +9,7 @@ Welcome to this InstaDeep Github repository, where are featured:
 Transformer ](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) and [Agro Nucleotide Transformer](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v2).
 2. A collection of segmentation models using the Nucleotide Transformers as a backbone, allowing segmentation of a dna sequence's
 genomic elements at single-nucleotide resolution: the [SegmentNT](https://www.biorxiv.org/content/10.1101/2024.03.14.584712v1.full.pdf) models.
+3. Similarly to the SegmentNT models, SegmentEnformer and SegmentBorzoi, allowing segmentation of a dna sequence's genomic elements at single-nucleotide resolution, using respectively [Enformer](https://www.nature.com/articles/s41592-021-01252-x) and [Borzoi](https://www.nature.com/articles/s41588-024-02053-6)
 
 We are thrilled to open-source these works and provide the community with access to the
 code and pre-trained weights for these nine genomics language models and 2 segmentation models. Models from [The Nucleotide Transformer
@@ -235,6 +236,207 @@ tokenized_dna_sequence_2 = [<CLS>,<ACGTGT>,<A>,<C>,<N>,<TGCACG>,<G>,<A>,<N>,<CGA
 
 All the v1 and v2 transformers can therefore take sequences of up to 5994 and 12282 nucleotides respectively if there are
 no "N" inside.
+
+---
+
+## SegmentEnformer
+
+SegmentEnformer leverages [Enformer](https://www.nature.com/articles/s41592-021-01252-x) by removing the prediction head and replacing it by a 1-dimensional U-Net segmentation head to predict the location of several types of genomics elements in a sequence at a single nucleotide resolution.
+
+
+#### Get started 🚀
+
+To use the code and pre-trained models, simply:
+
+1. Clone the repository to your local machine.
+2. Install the package by running `pip install .`.
+
+You can then download and infer on a sequence with any of our models in only a few
+lines of codes:
+
+🔍 The notebook `examples/inference_segment_enformer.ipynb` showcases how to infer on a 196608bp sequence and plot the probabilities.
+
+```python
+import haiku as hk
+import jax
+import jax.numpy as jnp
+import numpy as np
+
+from enformer.enformer_ia3 import build_enformer_fn_ia3_rescaling_with_head_fn
+from enformer.heads import UNetHead
+from enformer.params import download_ckpt
+from enformer.pretrained import get_pretrained_enformer_model
+
+# Initialize CPU as default JAX device. This makes the code robust to memory leakage on
+# the devices.
+jax.config.update("jax_platform_name", "cpu")
+
+backend = "cpu"
+devices = jax.devices(backend)
+num_devices = len(devices)
+
+features = [
+    "protein_coding_gene",
+    "lncRNA",
+    "exon",
+    "intron",
+    "splice_donor",
+    "splice_acceptor",
+    "5UTR",
+    "3UTR",
+    "CTCF-bound",
+    "polyA_signal",
+    "enhancer_Tissue_specific",
+    "enhancer_Tissue_invariant",
+    "promoter_Tissue_specific",
+    "promoter_Tissue_invariant",
+]
+
+_, _, forward_fn, tokenizer, config = get_pretrained_enformer_model()
+
+def head_fn() -> hk.Module:
+    return UNetHead(
+        features=features,
+        embed_dimension=config.embed_dim,
+        nucl_per_token=config.dim_divisible_by,
+        remove_cls_token=False,
+    )
+
+finetune_forward_fn = build_enformer_fn_ia3_rescaling_with_head_fn(
+    config=config,
+    head_fn=head_fn,
+    embedding_name="embedding_transformer_tower",
+    name="Enformer",
+    compute_dtype=jnp.float32,
+)
+finetune_forward_fn = hk.transform_with_state(finetune_forward_fn)
+parameters, state = download_ckpt("segment_enformer")
+
+apply_fn = jax.pmap(finetune_forward_fn.apply, devices=devices, donate_argnums=(0,))
+
+random_key = jax.random.PRNGKey(seed=0)
+keys = jax.device_put_replicated(random_key, devices=devices)
+parameters = jax.device_put_replicated(parameters, devices=devices)
+state = jax.device_put_replicated(state, devices=devices)
+
+# Get data and tokenize it
+sequences = ["A" * 196_608]
+tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
+tokens_str = [b[0] for b in tokenizer.batch_tokenize(sequences)]
+tokens = jnp.stack([jnp.asarray(tokens_ids, dtype=jnp.int32)] * num_devices, axis=0)
+
+# Infer
+outs, _ = apply_fn(parameters, state, keys, tokens)
+
+# Obtain the logits over the genomic features
+(logits,) = outs["logits"]
+# Transform them on probabilities
+probabilities = np.asarray(jax.nn.softmax(logits, axis=-1))[..., -1]
+
+# Get probabilities associated with intron
+idx_intron = features.index("intron")
+probabilities_intron = probabilities[..., idx_intron]
+print(f"Intron probabilities shape: {probabilities_intron.shape}")
+```
+
+## SegmentBorzoi
+SegmentBorzoi leverages [Borzoi](https://www.nature.com/articles/s41588-024-02053-6) by removing the prediction head and replacing it by a 1-dimensional U-Net segmentation head to predict the location of several types of genomics elements in a sequence.
+
+#### Get started 🚀
+
+To use the code and pre-trained models, simply:
+
+1. Clone the repository to your local machine.
+2. Install the package by running `pip install .`.
+
+You can then download and infer on a sequence with any of our models in only a few
+lines of codes:
+
+🔍 The notebook `examples/inference_segment_borzoi.ipynb` showcases how to infer on a 196608bp sequence and plot the probabilities.
+
+```python
+import haiku as hk
+import jax
+import jax.numpy as jnp
+import numpy as np
+
+from borzoi.borzoi_with_head import build_borzoi_fn_with_head_fn
+from borzoi.pretrained import get_pretrained_borzoi_model
+from enformer.heads import UNetHead
+from enformer.params import download_ckpt
+
+# Initialize CPU as default JAX device. This makes the code robust to memory leakage on
+# the devices.
+jax.config.update("jax_platform_name", "cpu")
+
+backend = "cpu"
+devices = jax.devices(backend)
+num_devices = len(devices)
+
+features = [
+    "protein_coding_gene",
+    "lncRNA",
+    "exon",
+    "intron",
+    "splice_donor",
+    "splice_acceptor",
+    "5UTR",
+    "3UTR",
+    "CTCF-bound",
+    "polyA_signal",
+    "enhancer_Tissue_specific",
+    "enhancer_Tissue_invariant",
+    "promoter_Tissue_specific",
+    "promoter_Tissue_invariant",
+]
+
+forward_fn, tokenizer, config = get_pretrained_borzoi_model()
+
+def head_fn() -> hk.Module:
+    return UNetHead(
+        features=features,
+        embed_dimension=config.embed_dim,
+        nucl_per_token=config.dim_divisible_by,
+        remove_cls_token=False,
+    )
+
+finetune_forward_fn = build_borzoi_fn_with_head_fn(
+    config=config,
+    head_fn=head_fn,
+    embedding_name="embedding",
+    name="Borzoi",
+    compute_dtype=jnp.float32,
+)
+finetune_forward_fn = hk.transform_with_state(finetune_forward_fn)
+
+parameters, state = download_ckpt("segment_borzoi")
+
+apply_fn = jax.pmap(finetune_forward_fn.apply, devices=devices, donate_argnums=(0,))
+
+random_key = jax.random.PRNGKey(seed=0)
+keys = jax.device_put_replicated(random_key, devices=devices)
+parameters = jax.device_put_replicated(parameters, devices=devices)
+state = jax.device_put_replicated(state, devices=devices)
+
+# Get data and tokenize it
+sequences = ["A" * 524_288]
+tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
+tokens_str = [b[0] for b in tokenizer.batch_tokenize(sequences)]
+tokens = jnp.stack([jnp.asarray(tokens_ids, dtype=jnp.int32)] * num_devices, axis=0)
+
+# Infer
+outs, _ = apply_fn(parameters, state, keys, tokens) 
+
+# Obtain the logits over the genomic features
+logits, = outs["logits"]
+# Transform them on probabilities
+probabilities = np.asarray(jax.nn.softmax(logits, axis=-1))[...,-1]
+
+# Get probabilities associated with intron
+idx_intron = features.index("intron")
+probabilities_intron = probabilities[..., idx_intron]
+print(f"Intron probabilities shape: {probabilities_intron.shape}")
+```
 
 ---
 

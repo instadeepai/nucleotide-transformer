@@ -84,7 +84,6 @@ forward_fn = hk.transform(forward_fn)
 # Get data and tokenize it
 sequences = ["ATTCCGATTCCGATTCCG", "ATTTCTCTCTCTCTCTGAGATCGATCGATCGAT"]
 tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
-tokens_str = [b[0] for b in tokenizer.batch_tokenize(sequences)]
 tokens = jnp.asarray(tokens_ids, dtype=jnp.int32)
 
 # Initialize random key
@@ -185,7 +184,6 @@ apply_fn = jax.pmap(forward_fn.apply, devices=devices, donate_argnums=(0,))
 # Get data and tokenize it
 sequences = ["ATTCCGATTCCGATTCCAACGGATTATTCCGATTAACCGATTCCAATT", "ATTTCTCTCTCTCTCTGAGATCGATGATTTCTCTCTCATCGAACTATG"]
 tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
-tokens_str = [b[0] for b in tokenizer.batch_tokenize(sequences)]
 tokens = jnp.asarray(tokens_ids, dtype=jnp.int32)
 
 random_key = jax.random.PRNGKey(seed=0)
@@ -288,7 +286,6 @@ state = jax.device_put_replicated(state, devices=devices)
 # Get data and tokenize it
 sequences = ["A" * 196_608]
 tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
-tokens_str = [b[0] for b in tokenizer.batch_tokenize(sequences)]
 tokens = jnp.stack([jnp.asarray(tokens_ids, dtype=jnp.int32)] * num_devices, axis=0)
 
 # Infer
@@ -351,7 +348,6 @@ state = jax.device_put_replicated(state, devices=devices)
 # Get data and tokenize it
 sequences = ["A" * 524_288]
 tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
-tokens_str = [b[0] for b in tokenizer.batch_tokenize(sequences)]
 tokens = jnp.stack([jnp.asarray(tokens_ids, dtype=jnp.int32)] * num_devices, axis=0)
 
 # Infer

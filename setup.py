@@ -30,6 +30,8 @@ setup(
         "tqdm>=4.56.0",
         "regex>=2022.1.18",
         "huggingface-hub>=0.23.0",
+        "borzoi_pytorch==0.4.0",
+        "enformer-pytorch==0.7.6",
     ],
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",

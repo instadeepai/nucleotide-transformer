@@ -262,7 +262,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from enformer.enformer_ia3 import build_enformer_fn_ia3_rescaling_with_head_fn
+from enformer.model import build_enformer_with_head_fn
 from enformer.heads import UNetHead
 from enformer.params import download_ckpt
 from enformer.pretrained import get_pretrained_enformer_model
@@ -292,7 +292,7 @@ features = [
     "promoter_Tissue_invariant",
 ]
 
-_, _, forward_fn, tokenizer, config = get_pretrained_enformer_model()
+_, _, _, tokenizer, config = get_pretrained_enformer_model()
 
 def head_fn() -> hk.Module:
     return UNetHead(
@@ -302,17 +302,17 @@ def head_fn() -> hk.Module:
         remove_cls_token=False,
     )
 
-finetune_forward_fn = build_enformer_fn_ia3_rescaling_with_head_fn(
+forward_fn = build_enformer_with_head_fn(
     config=config,
     head_fn=head_fn,
     embedding_name="embedding_transformer_tower",
     name="Enformer",
     compute_dtype=jnp.float32,
 )
-finetune_forward_fn = hk.transform_with_state(finetune_forward_fn)
+forward_fn = hk.transform_with_state(forward_fn)
 parameters, state = download_ckpt("segment_enformer")
 
-apply_fn = jax.pmap(finetune_forward_fn.apply, devices=devices, donate_argnums=(0,))
+apply_fn = jax.pmap(forward_fn.apply, devices=devices, donate_argnums=(0,))
 
 random_key = jax.random.PRNGKey(seed=0)
 keys = jax.device_put_replicated(random_key, devices=devices)

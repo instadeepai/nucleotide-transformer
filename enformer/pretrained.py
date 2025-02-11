@@ -18,7 +18,7 @@ __all__ = [
     "get_pretrained_enformer_model",
 ]
 
-from trix.tokenizers.language_models.bio import NucleotidesKmersTokenizer
+from enformer.tokenizer import NucleotidesKmersTokenizer
 
 ENFORMER_MODEL_NAME = "Enformer"
 

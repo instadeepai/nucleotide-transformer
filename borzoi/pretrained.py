@@ -4,9 +4,9 @@ from typing import Callable, Tuple
 
 import haiku as hk
 import jax.numpy as jnp
-from trix.tokenizers.language_models.bio import NucleotidesKmersTokenizer
 
 from borzoi.model import BorzoiConfig, build_borzoi_fn
+from enformer.tokenizer import NucleotidesKmersTokenizer
 
 BORZOI_MODEL_NAME = "Borzoi"
 

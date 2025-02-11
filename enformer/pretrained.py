@@ -10,6 +10,7 @@ import numpy as np
 import torch
 from enformer_pytorch import Enformer
 
+from enformer.features import FEATURES
 from enformer.heads import UNetHead
 from enformer.model import (
     EnformerConfig,
@@ -17,32 +18,14 @@ from enformer.model import (
     build_enformer_with_head_fn,
 )
 from enformer.params import download_ckpt
+from enformer.tokenizer import NucleotidesKmersTokenizer
 
 __all__ = [
     "build_enformer_fn",
     "get_pretrained_segment_enformer_model",
     "ENFORMER_MODEL_NAME",
-    "FEATURES",
 ]
 
-FEATURES = [
-    "protein_coding_gene",
-    "lncRNA",
-    "exon",
-    "intron",
-    "splice_donor",
-    "splice_acceptor",
-    "5UTR",
-    "3UTR",
-    "CTCF-bound",
-    "polyA_signal",
-    "enhancer_Tissue_specific",
-    "enhancer_Tissue_invariant",
-    "promoter_Tissue_specific",
-    "promoter_Tissue_invariant",
-]
-
-from enformer.tokenizer import NucleotidesKmersTokenizer
 
 ENFORMER_MODEL_NAME = "Enformer"
 

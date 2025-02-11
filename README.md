@@ -7,8 +7,9 @@
 Welcome to this InstaDeep Github repository, where are featured:
 1. A collection of transformer based genomic language models from both of our research works, [The Nucleotide
 Transformer ](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) and [Agro Nucleotide Transformer](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v2).
-2. A collection of segmentation models using the Nucleotide Transformers as a backbone, allowing segmentation of a dna sequence's
+2. A collection of segmentation models using the Nucleotide Transformers as a backbone, allowing segmentation of a DNA sequence's
 genomic elements at single-nucleotide resolution: the [SegmentNT](https://www.biorxiv.org/content/10.1101/2024.03.14.584712v1.full.pdf) models.
+3. Similarly to the SegmentNT models, SegmentEnformer and SegmentBorzoi, allowing segmentation of a DNA sequence's genomic elements at single-nucleotide resolution, using respectively [Enformer](https://www.nature.com/articles/s41592-021-01252-x) and [Borzoi](https://www.nature.com/articles/s41588-024-02053-6)
 
 We are thrilled to open-source these works and provide the community with access to the
 code and pre-trained weights for these nine genomics language models and 2 segmentation models. Models from [The Nucleotide Transformer
@@ -83,7 +84,6 @@ forward_fn = hk.transform(forward_fn)
 # Get data and tokenize it
 sequences = ["ATTCCGATTCCGATTCCG", "ATTTCTCTCTCTCTCTGAGATCGATCGATCGAT"]
 tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
-tokens_str = [b[0] for b in tokenizer.batch_tokenize(sequences)]
 tokens = jnp.asarray(tokens_ids, dtype=jnp.int32)
 
 # Initialize random key
@@ -184,7 +184,6 @@ apply_fn = jax.pmap(forward_fn.apply, devices=devices, donate_argnums=(0,))
 # Get data and tokenize it
 sequences = ["ATTCCGATTCCGATTCCAACGGATTATTCCGATTAACCGATTCCAATT", "ATTTCTCTCTCTCTCTGAGATCGATGATTTCTCTCTCATCGAACTATG"]
 tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
-tokens_str = [b[0] for b in tokenizer.batch_tokenize(sequences)]
 tokens = jnp.asarray(tokens_ids, dtype=jnp.int32)
 
 random_key = jax.random.PRNGKey(seed=0)
@@ -235,6 +234,136 @@ tokenized_dna_sequence_2 = [<CLS>,<ACGTGT>,<A>,<C>,<N>,<TGCACG>,<G>,<A>,<N>,<CGA
 
 All the v1 and v2 transformers can therefore take sequences of up to 5994 and 12282 nucleotides respectively if there are
 no "N" inside.
+
+---
+
+## SegmentEnformer
+
+SegmentEnformer leverages [Enformer](https://www.nature.com/articles/s41592-021-01252-x) by removing the prediction head and replacing it by a 1-dimensional U-Net segmentation head to predict the location of several types of genomics elements in a sequence at a single nucleotide resolution.
+
+
+#### Get started 🚀
+
+To use the code and pre-trained models, simply:
+
+1. Clone the repository to your local machine.
+2. Install the package by running `pip install .`.
+
+You can then download and infer on a sequence with any of our models in only a few
+lines of codes:
+
+🔍 The notebook `examples/inference_segment_enformer.ipynb` showcases how to infer on a 196608bp sequence and plot the probabilities.
+
+```python
+import haiku as hk
+import jax
+import jax.numpy as jnp
+import numpy as np
+
+from enformer.pretrained import get_pretrained_segment_enformer_model
+from enformer.features import FEATURES
+
+# Initialize CPU as default JAX device. This makes the code robust to memory leakage on
+# the devices.
+jax.config.update("jax_platform_name", "cpu")
+
+backend = "cpu"
+devices = jax.devices(backend)
+num_devices = len(devices)
+
+# Load model
+parameters, state, forward_fn, tokenizer, config = get_pretrained_segment_enformer_model()
+forward_fn = hk.transform_with_state(forward_fn)
+
+apply_fn = jax.pmap(forward_fn.apply, devices=devices, donate_argnums=(0,))
+random_key = jax.random.PRNGKey(seed=0)
+
+# Replicate over devices
+keys = jax.device_put_replicated(random_key, devices=devices)
+parameters = jax.device_put_replicated(parameters, devices=devices)
+state = jax.device_put_replicated(state, devices=devices)
+
+# Get data and tokenize it
+sequences = ["A" * 196_608]
+tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
+tokens = jnp.stack([jnp.asarray(tokens_ids, dtype=jnp.int32)] * num_devices, axis=0)
+
+# Infer
+outs, state = apply_fn(parameters, state, keys, tokens)
+
+# Obtain the logits over the genomic features
+logits = outs["logits"]
+# Transform them on probabilities
+probabilities = np.asarray(jax.nn.softmax(logits, axis=-1))[..., -1]
+
+# Get probabilities associated with intron
+idx_intron = FEATURES.index("intron")
+probabilities_intron = probabilities[..., idx_intron]
+print(f"Intron probabilities shape: {probabilities_intron.shape}")
+```
+
+## SegmentBorzoi
+SegmentBorzoi leverages [Borzoi](https://www.nature.com/articles/s41588-024-02053-6) by removing the prediction head and replacing it by a 1-dimensional U-Net segmentation head to predict the location of several types of genomics elements in a sequence.
+
+#### Get started 🚀
+
+To use the code and pre-trained models, simply:
+
+1. Clone the repository to your local machine.
+2. Install the package by running `pip install .`.
+
+You can then download and infer on a sequence with any of our models in only a few
+lines of codes:
+
+🔍 The notebook `examples/inference_segment_borzoi.ipynb` showcases how to infer on a 196608bp sequence and plot the probabilities.
+
+```python
+import haiku as hk
+import jax
+import jax.numpy as jnp
+import numpy as np
+
+from borzoi.pretrained import get_pretrained_segment_borzoi_model
+from enformer.features import FEATURES
+
+# Initialize CPU as default JAX device. This makes the code robust to memory leakage on
+# the devices.
+jax.config.update("jax_platform_name", "cpu")
+
+backend = "cpu"
+devices = jax.devices(backend)
+num_devices = len(devices)
+
+# Load model
+parameters, state, forward_fn, tokenizer, config = get_pretrained_segment_borzoi_model()
+forward_fn = hk.transform_with_state(forward_fn)
+apply_fn = jax.pmap(forward_fn.apply, devices=devices, donate_argnums=(0,))
+random_key = jax.random.PRNGKey(seed=0)
+
+# Replicate over devices
+keys = jax.device_put_replicated(random_key, devices=devices)
+parameters = jax.device_put_replicated(parameters, devices=devices)
+state = jax.device_put_replicated(state, devices=devices)
+
+# Get data and tokenize it
+sequences = ["A" * 524_288]
+tokens_ids = [b[1] for b in tokenizer.batch_tokenize(sequences)]
+tokens = jnp.stack([jnp.asarray(tokens_ids, dtype=jnp.int32)] * num_devices, axis=0)
+
+# Infer
+outs, state = apply_fn(parameters, state, keys, tokens)
+
+# Obtain the logits over the genomic features
+logits = outs["logits"]
+# Transform them on probabilities
+probabilities = np.asarray(jax.nn.softmax(logits, axis=-1))[..., -1]
+
+# Get probabilities associated with intron
+idx_intron = FEATURES.index("intron")
+probabilities_intron = probabilities[..., idx_intron]
+print(f"Intron probabilities shape: {probabilities_intron.shape}")
+
+```
 
 ---
 

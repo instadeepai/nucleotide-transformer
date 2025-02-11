@@ -1,0 +1,16 @@
+FEATURES = [
+    "protein_coding_gene",
+    "lncRNA",
+    "exon",
+    "intron",
+    "splice_donor",
+    "splice_acceptor",
+    "5UTR",
+    "3UTR",
+    "CTCF-bound",
+    "polyA_signal",
+    "enhancer_Tissue_specific",
+    "enhancer_Tissue_invariant",
+    "promoter_Tissue_specific",
+    "promoter_Tissue_invariant",
+]

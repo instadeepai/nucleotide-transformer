@@ -12,7 +12,7 @@ from nucleotide_transformer.enformer.model import (
     build_enformer_with_head_fn,
 )
 from nucleotide_transformer.enformer.params import download_ckpt
-from nucleotide_transformer.enformer.tokenizer import NucleotidesKmersTokenizer
+from nucleotide_transformer.tokenizers import NucleotidesKmersTokenizer
 
 
 def get_pretrained_segment_enformer_model() -> (
@@ -35,7 +35,7 @@ def get_pretrained_segment_enformer_model() -> (
         >>> apply_fn = hk.transform_with_state(forward_fn).apply
         >>> random_key = jax.random.PRNGKey(seed=0)
         >>> sequences = ["A" * 196608]
-        >>> tokens = tokenizer.batch_np_tokenize(sequences)
+        >>> tokens = jax.numpy.asarray([b[1] for b in tokenizer.batch_tokenize(sequences)])
         >>> outs, _ = apply_fn(parameters, state, random_key, tokens)
     """
     config = EnformerConfig()

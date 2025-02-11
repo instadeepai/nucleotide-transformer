@@ -290,25 +290,19 @@ class Enformer(hk.Module):
 
         # one-hot encoding
         x = self._batch_one_hot_encode(tokens)
-        debug_log_tensor("one-hot encoded sequences", x, logger=logger)
 
         # Enformer model
         x = jnp.transpose(x, (0, 2, 1))
         x = self._stem(x, is_training=is_training)
-        debug_log_tensor("embeddings after stem", x, logger=logger)
 
         x = self._conv_tower(x, is_training=is_training)
-        debug_log_tensor("embeddings after conv tower", x, logger=logger)
         x = jnp.transpose(x, (0, 2, 1))
 
         x = self._transformer_tower(x)
-        debug_log_tensor("embeddings after transformer tower", x, logger=logger)
 
         x = self._target_length_crop(x)
-        debug_log_tensor("embeddings after cropping", x, logger=logger)
 
         x = self._final_pointwise(x, is_training=is_training)
-        debug_log_tensor("embeddings after final pointwise", x, logger=logger)
 
         outs = {}
         outs["embedding"] = x
@@ -316,8 +310,6 @@ class Enformer(hk.Module):
         # human and mouse heads
         heads_outs = self._heads(x)
         outs.update(heads_outs)
-        debug_log_tensor("human head output", outs["human_head"], logger=logger)
-        debug_log_tensor("mouse head output", outs["mouse_head"], logger=logger)
 
         return outs
 

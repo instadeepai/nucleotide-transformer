@@ -10,12 +10,36 @@ import numpy as np
 import torch
 from enformer_pytorch import Enformer
 
-from enformer.model import EnformerConfig, build_enformer_fn
+from enformer.heads import UNetHead
+from enformer.model import (
+    EnformerConfig,
+    build_enformer_fn,
+    build_enformer_with_head_fn,
+)
+from enformer.params import download_ckpt
 
 __all__ = [
     "build_enformer_fn",
+    "get_pretrained_segment_enformer_model",
     "ENFORMER_MODEL_NAME",
-    "get_pretrained_enformer_model",
+    "FEATURES",
+]
+
+FEATURES = [
+    "protein_coding_gene",
+    "lncRNA",
+    "exon",
+    "intron",
+    "splice_donor",
+    "splice_acceptor",
+    "5UTR",
+    "3UTR",
+    "CTCF-bound",
+    "polyA_signal",
+    "enhancer_Tissue_specific",
+    "enhancer_Tissue_invariant",
+    "promoter_Tissue_specific",
+    "promoter_Tissue_invariant",
 ]
 
 from enformer.tokenizer import NucleotidesKmersTokenizer
@@ -472,3 +496,35 @@ def get_pretrained_enformer_model(
     )
 
     return hk_params, hk_state, enformer_fn, tokenizer, config
+
+
+def get_pretrained_segment_enformer_model(
+    compute_dtype: jnp.dtype = jnp.float32,
+    param_dtype: jnp.dtype = jnp.float32,
+    output_dtype: jnp.dtype = jnp.float32,
+) -> Tuple[hk.Params, hk.State, Callable, NucleotidesKmersTokenizer, EnformerConfig]:
+    _, _, _, tokenizer, config = get_pretrained_enformer_model(
+        compute_dtype=compute_dtype,
+        param_dtype=param_dtype,
+        output_dtype=output_dtype,
+    )
+
+    def head_fn() -> hk.Module:
+        return UNetHead(
+            features=FEATURES,
+            embed_dimension=config.embed_dim,
+            nucl_per_token=config.dim_divisible_by,
+            remove_cls_token=False,
+        )
+
+    forward_fn = build_enformer_with_head_fn(
+        config=config,
+        head_fn=head_fn,
+        embedding_name="embedding_transformer_tower",
+        name="Enformer",
+        compute_dtype=jnp.float32,
+    )
+
+    parameters, state = download_ckpt("segment_enformer")
+
+    return parameters, state, forward_fn, tokenizer, config

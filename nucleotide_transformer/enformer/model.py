@@ -318,69 +318,6 @@ class Enformer(hk.Module):
         return outs
 
 
-def build_enformer_fn(
-    config: EnformerConfig,
-    compute_dtype: jnp.dtype = jnp.float32,
-    param_dtype: jnp.dtype = jnp.float32,
-    output_dtype: jnp.dtype = jnp.float32,
-    name: Optional[str] = None,
-) -> Callable:
-    """
-    Create the model's forward pass.
-
-    Args:
-        config: Configuration data class containing the hyperparameters for the GPT
-            forward function.
-        compute_dtype: the type of the activations. fp16 runs faster and is lighter in
-            memory. bf16 handles better large int, and is hence more stable ( it avoids
-            float overflows ).
-        param_dtype: if compute_dtype is fp16, the model weights will be cast to fp16
-            during the forward pass anyway. So in inference mode ( not training mode ),
-            it is better to use params in fp16 if compute_dtype is fp16 too
-        output_dtype: the output type of the model. it determines the float precision
-            of the gradient when training the model.
-            NOTE: when training, the gradient is often accumulated in fp32, therefore
-            output_dtype need to be in fp32.
-        name: the name of the model. example: gpt_j_decoder.
-
-
-        # NOTE: in inference, the model could be in fp16 without too much degradation
-        # NOTE: on NVIDIA accelerator, XLA inter-device operation ( psum, all_gather,
-        etc ... ) are not always implemented for bf16. but on TPU hardware yes
-
-    Returns:
-        Enformer model forward function.
-    """
-
-    assert {compute_dtype, param_dtype, output_dtype}.issubset(
-        {
-            jnp.bfloat16,
-            jnp.float32,
-            jnp.float16,
-        }
-    ), f"provide a dtype in {jnp.bfloat16, jnp.float32, jnp.float16}"
-
-    policy = jmp.Policy(
-        compute_dtype=compute_dtype, param_dtype=param_dtype, output_dtype=output_dtype
-    )
-    hk.mixed_precision.set_policy(Enformer, policy)
-
-    # Remove it in batch norm to avoid instabilities
-    norm_policy = jmp.Policy(
-        compute_dtype=jnp.float32, param_dtype=param_dtype, output_dtype=compute_dtype
-    )
-    hk.mixed_precision.set_policy(hk.LayerNorm, norm_policy)
-    hk.mixed_precision.set_policy(hk.BatchNorm, norm_policy)
-
-    def enformer_fn(
-        tokens: jnp.ndarray, is_training: bool = False
-    ) -> Dict[str, jnp.ndarray]:
-        model = Enformer(config, name=name)
-        return model(tokens, is_training=is_training)
-
-    return enformer_fn
-
-
 def build_enformer_with_head_fn(
     config: EnformerConfig,
     head_fn: Callable[

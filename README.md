@@ -7,9 +7,9 @@
 Welcome to this InstaDeep Github repository, where are featured:
 1. A collection of transformer based genomic language models from both of our research works, [The Nucleotide
 Transformer ](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) and [Agro Nucleotide Transformer](https://www.biorxiv.org/content/10.1101/2023.10.24.563624v2).
-2. A collection of segmentation models using the Nucleotide Transformers as a backbone, allowing segmentation of a dna sequence's
+2. A collection of segmentation models using the Nucleotide Transformers as a backbone, allowing segmentation of a DNA sequence's
 genomic elements at single-nucleotide resolution: the [SegmentNT](https://www.biorxiv.org/content/10.1101/2024.03.14.584712v1.full.pdf) models.
-3. Similarly to the SegmentNT models, SegmentEnformer and SegmentBorzoi, allowing segmentation of a dna sequence's genomic elements at single-nucleotide resolution, using respectively [Enformer](https://www.nature.com/articles/s41592-021-01252-x) and [Borzoi](https://www.nature.com/articles/s41588-024-02053-6)
+3. Similarly to the SegmentNT models, SegmentEnformer and SegmentBorzoi, allowing segmentation of a DNA sequence's genomic elements at single-nucleotide resolution, using respectively [Enformer](https://www.nature.com/articles/s41592-021-01252-x) and [Borzoi](https://www.nature.com/articles/s41588-024-02053-6)
 
 We are thrilled to open-source these works and provide the community with access to the
 code and pre-trained weights for these nine genomics language models and 2 segmentation models. Models from [The Nucleotide Transformer

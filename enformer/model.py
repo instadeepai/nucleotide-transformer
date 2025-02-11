@@ -15,7 +15,6 @@ from enformer.layers import (
     exponential_linspace_int,
     gelu_fn,
 )
-from enformer.model import Enformer, EnformerConfig
 
 SequenceMask: TypeAlias = jnp.ndarray
 

@@ -6,7 +6,6 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 import jmp
-from trix.utils.logging import debug_log_tensor
 
 from enformer.layers import (
     Attention,

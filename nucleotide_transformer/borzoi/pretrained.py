@@ -12,7 +12,7 @@ from nucleotide_transformer.borzoi.model import (
 from nucleotide_transformer.enformer.features import FEATURES
 from nucleotide_transformer.enformer.heads import UNetHead
 from nucleotide_transformer.enformer.params import download_ckpt
-from nucleotide_transformer.tokenizers import NucleotidesKmersTokenizer
+from nucleotide_transformer.enformer.tokenizer import NucleotidesKmersTokenizer
 
 
 def get_pretrained_segment_borzoi_model() -> (

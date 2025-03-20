@@ -12,7 +12,7 @@ from nucleotide_transformer.enformer.model import (
     build_enformer_with_head_fn,
 )
 from nucleotide_transformer.enformer.params import download_ckpt
-from nucleotide_transformer.tokenizers import NucleotidesKmersTokenizer
+from nucleotide_transformer.enformer.tokenizer import NucleotidesKmersTokenizer
 
 
 def get_pretrained_segment_enformer_model() -> (

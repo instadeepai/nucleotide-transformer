@@ -54,13 +54,15 @@ def download_ckpt() -> Tuple[hk.Params, Any]:
     print("Downloading model's weights...")
     params = joblib.load(
         hf_hub_download(
-            repo_id=repo_id, filename="jax_model/params.joblib", cache_dir=save_dir
+            repo_id=repo_id,
+            filename="jax_params/params.joblib",
+            cache_dir=save_dir,
         )
     )
     config = joblib.load(
         hf_hub_download(
             repo_id=repo_id,
-            filename="jax_model/config.joblib",
+            filename="jax_params/config.joblib",
             cache_dir=save_dir,
         )
     )

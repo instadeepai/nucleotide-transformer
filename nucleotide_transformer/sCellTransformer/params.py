@@ -60,7 +60,7 @@ def download_ckpt() -> Tuple[hk.Params, Any]:
     config = joblib.load(
         hf_hub_download(
             repo_id=repo_id,
-            filename="jax_model/model_config.joblib",
+            filename="jax_model/config.joblib",
             cache_dir=save_dir,
         )
     )

@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 from typing import Any, Dict, Tuple
 
 import haiku as hk
 import joblib
 from huggingface_hub import hf_hub_download
+
+from nucleotide_transformer.sCellTransformer.model import LongRangeNTConfig
 
 ENV_XDG_CACHE_HOME = "XDG_CACHE_HOME"
 DEFAULT_CACHE_DIR = "~/.cache"
@@ -59,12 +62,13 @@ def download_ckpt() -> Tuple[hk.Params, Any]:
             cache_dir=save_dir,
         )
     )
-    config = joblib.load(
-        hf_hub_download(
-            repo_id=repo_id,
-            filename="jax_params/config.joblib",
-            cache_dir=save_dir,
-        )
+
+    config_path = hf_hub_download(
+        repo_id=repo_id,
+        filename="jax_params/config.json",
     )
+    with open(config_path, "r") as f:
+        config_dict = json.load(f)
+    config = LongRangeNTConfig(**config_dict)
 
     return params, config

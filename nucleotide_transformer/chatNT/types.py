@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Tuple
 
 import jax.numpy as jnp
 from typing_extensions import TypeAlias
@@ -12,3 +12,4 @@ AttentionMask: TypeAlias = jnp.ndarray
 SequenceMask: TypeAlias = jnp.ndarray
 AttentionWeights: TypeAlias = jnp.ndarray
 TransformerOutput: TypeAlias = Dict[str, jnp.ndarray]
+MultiOmicsTokens: TypeAlias = Tuple[jnp.ndarray, jnp.ndarray]

@@ -11,11 +11,11 @@ from trix.models.gpt.model import GptConfig, GptDecoder
 from trix.models.perceiver_resampler.model import PerceiverResamplerConfig
 from trix.types import TransformerOutput
 from trix.utils.logging import debug_log_tensor
-from typing_extensions import TypeAlias
 
 from nucleotide_transformer.chatNT.multi_modal_perceiver_projection import (
     MultiModalPerceiverResamplerProjection,
 )
+from nucleotide_transformer.chatNT.types import MultiOmicsTokens
 
 
 class BioBrainDecoder(hk.Module):

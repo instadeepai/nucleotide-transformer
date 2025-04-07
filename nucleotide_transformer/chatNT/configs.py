@@ -66,8 +66,10 @@ class GptConfig:
     num_heads: int = 2
     num_kv_heads: Optional[int] = None
     num_layers: int = 2
-    rope_config: RotaryEmbeddingConfig = RotaryEmbeddingConfig(
-        max_seq_len=512, dim=embed_dim // num_heads, theta=10000.0
+    rope_config: RotaryEmbeddingConfig = field(
+        default_factory=lambda: RotaryEmbeddingConfig(
+            max_seq_len=512, dim=16 // 2, theta=10000.0
+        )
     )
     add_bias_ffn: bool = False
     ffn_activation_name: str = "swish"

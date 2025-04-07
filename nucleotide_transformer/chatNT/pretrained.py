@@ -1,5 +1,3 @@
-import os
-
 from transformers import AutoTokenizer
 
 from nucleotide_transformer.chatNT.configs import (

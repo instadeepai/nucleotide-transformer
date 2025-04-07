@@ -1,4 +1,3 @@
-import logging
 from dataclasses import replace
 from typing import Callable, Optional, Tuple
 
@@ -6,16 +5,18 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 import jmp
-from trix.models.esm.model import ESMTransformer, ESMTransformerConfig
-from trix.models.gpt.model import GptConfig, GptDecoder
-from trix.models.perceiver_resampler.model import PerceiverResamplerConfig
-from trix.types import TransformerOutput
-from trix.utils.logging import debug_log_tensor
+from trix.models.esm.model import ESMTransformer
+from trix.models.gpt.model import GptDecoder
 
+from nucleotide_transformer.chatNT.configs import (
+    ESMTransformerConfig,
+    GptConfig,
+    PerceiverResamplerConfig,
+)
 from nucleotide_transformer.chatNT.multi_modal_perceiver_projection import (
     MultiModalPerceiverResamplerProjection,
 )
-from nucleotide_transformer.chatNT.types import MultiOmicsTokens
+from nucleotide_transformer.chatNT.types import MultiOmicsTokens, TransformerOutput
 
 
 class BioBrainDecoder(hk.Module):

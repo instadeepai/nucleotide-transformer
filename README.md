@@ -260,8 +260,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from enformer.pretrained import get_pretrained_segment_enformer_model
-from enformer.features import FEATURES
+from nucleotide_transformer.enformer.pretrained import get_pretrained_segment_enformer_model
+from nucleotide_transformer.enformer.features import FEATURES
 
 # Initialize CPU as default JAX device. This makes the code robust to memory leakage on
 # the devices.
@@ -323,8 +323,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from borzoi.pretrained import get_pretrained_segment_borzoi_model
-from enformer.features import FEATURES
+from nucleotide_transformer.borzoi.pretrained import get_pretrained_segment_borzoi_model
+from nucleotide_transformer.enformer.features import FEATURES
 
 # Initialize CPU as default JAX device. This makes the code robust to memory leakage on
 # the devices.
@@ -365,13 +365,91 @@ print(f"Intron probabilities shape: {probabilities_intron.shape}")
 
 ```
 
+## ChatNT
+
+[ChatNT](https://www.biorxiv.org/content/10.1101/2024.04.30.591835v1 is a multimodal conversational agent designed with a deep understanding of biological sequences (DNA, RNA, proteins).
+
+#### Get started 🚀
+
+To use the code and pre-trained models, simply:
+
+1. Clone the repository to your local machine.
+2. Install the package by running `pip install .`.
+
+You can then download and infer on a sequence with any of our models in only a few
+lines of codes:
+
+🔍 The notebook `examples/inference_chatNT.ipynb` showcases how to generate text from an english input and a DNA sequence.
+
+```python
+import haiku as hk
+import jax
+import jax.numpy as jnp
+import numpy as np
+
+from nucleotide_transformer.chatNT.pretrained import get_chatNT
+
+# Initialize CPU as default JAX device. This makes the code robust to memory leakage on
+# the devices.
+jax.config.update("jax_platform_name", "cpu")
+
+backend = "cpu"
+devices = jax.devices(backend)
+num_devices = len(devices)
+
+# Load model
+forward_fn, parameters, english_tokenizer, bio_tokenizer = get_chatNT()
+forward_fn = hk.transform(forward_fn)
+
+# Replicate over devices
+apply_fn = jax.pmap(forward_fn.apply, devices=devices, donate_argnums=(0,))
+random_key = jax.random.PRNGKey(seed=0)
+keys = jax.device_put_replicated(random_key, devices=devices)
+parameters = jax.device_put_replicated(parameters, devices=devices)
+
+# Define prompt
+english_sequence = "A chat between a curious user and an artificial intelligence assistant that can handle bio sequences. The assistant gives helpful, detailed, and polite answers to the user's questions. USER: Is there any evidence of an acceptor splice site in this sequence <DNA> ? ASSISTANT:"
+dna_sequences = ["A"*600]
+
+# Tokenize
+english_tokens = english_tokenizer(
+    [english_sequence],
+    return_tensors="np",
+    max_length=english_max_length,
+    padding="max_length",
+    truncation=True,
+).input_ids
+bio_tokens = bio_tokenizer(
+    dna_sequences,
+    return_tensors="np",
+    padding="max_length",
+    max_length=bio_tokenized_sequence_length,
+    truncation=True,
+).input_ids
+bio_tokens = np.expand_dims(bio_tokens, axis=0) # add batch size dimension
+
+# Replicate over devices
+english_tokens = jnp.stack([jnp.asarray(english_tokens, dtype=jnp.int32)]*num_devices, axis=0)
+bio_tokens = jnp.stack([jnp.asarray(bio_tokens, dtype=jnp.int32)]*num_devices, axis=0)
+
+# Infer
+outs = apply_fn(
+    parameters,
+    keys,
+    multi_omics_tokens_ids=(english_tokens, bio_tokens),
+    projection_english_tokens_ids=english_tokens,
+)
+
+# Obtain the logits
+logits = outs["logits"]
+```
+
 ---
 
 ## HuggingFace 🤗
 
 The collection of models presented in this repository are available on Instadeep's
-huggingface spaces here: [The Nucleotide Transformers space](https://huggingface.co/collections/InstaDeepAI/nucleotide-transformer-65099cdde13ff96230f2e592)
-and [Agro Nucleotide Transformer space](https://huggingface.co/collections/InstaDeepAI/agro-nucleotide-transformer-65b25c077cd0069ad6f6d344)!
+huggingface spaces here: [The Nucleotide Transformers space](https://huggingface.co/collections/InstaDeepAI/nucleotide-transformer-65099cdde13ff96230f2e592), [Agro Nucleotide Transformer space](https://huggingface.co/collections/InstaDeepAI/agro-nucleotide-transformer-65b25c077cd0069ad6f6d344), [SegmentNT space](https://huggingface.co/collections/InstaDeepAI/segmentnt-65eb4941c57808b4a3fe1319), and [ChatNT](https://huggingface.co/InstaDeepAI/ChatNT)!
 
 - **Nucleotide Transformer**: Two
 example notebooks showing how to finetune any of the models [with regular finetuning](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling.ipynb)
@@ -422,13 +500,25 @@ either of our associated papers:
 }
 ```
 
-[SegmentNT paper](https://www.biorxiv.org/content/biorxiv/early/2024/03/15/2024.03.14.584712.full.pdf)
+[SegmentNT paper](https://www.biorxiv.org/content/biorxiv/early/2024/03/15/2024.03.14.584712)
 ```bibtex
 @article{de2024segmentnt,
   title={SegmentNT: annotating the genome at single-nucleotide resolution with DNA foundation models},
   author={de Almeida, Bernardo P and Dalla-Torre, Hugo and Richard, Guillaume and Blum, Christopher and Hexemer, Lorenz and Gelard, Maxence and Pandey, Priyanka and Laurent, Stefan and Laterre, Alexandre and Lang, Maren and others},
   journal={bioRxiv},
   pages={2024--03},
+  year={2024},
+  publisher={Cold Spring Harbor Laboratory}
+}
+```
+
+[ChatNT paper](https://www.biorxiv.org/content/10.1101/2024.04.30.591835v1)
+```bibtex
+@article{richard2024chatnt,
+  title={Chatnt: A multimodal conversational agent for dna, rna and protein tasks},
+  author={Richard, Guillaume and de Almeida, Bernardo P and Dalla-Torre, Hugo and Blum, Christopher and Hexemer, Lorenz and Pandey, Priyanka and Laurent, Stefan and Lopez, Marie and Laterre, Alexandre and Lang, Maren and others},
+  journal={bioRxiv},
+  pages={2024--04},
   year={2024},
   publisher={Cold Spring Harbor Laboratory}
 }

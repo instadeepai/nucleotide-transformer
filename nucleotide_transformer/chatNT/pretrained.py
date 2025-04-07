@@ -86,7 +86,7 @@ def get_chatNT():
     )
     seq_token_id = 32000
 
-    model = build_multi_omics_fn(
+    forward_fn = build_multi_omics_fn(
         esm_config=esm_config,
         gpt_config=gpt_config,
         seq_token_id=seq_token_id,
@@ -99,4 +99,4 @@ def get_chatNT():
 
     params = download_ckpt()
 
-    return model, params, english_tokenizer, bio_tokenizer
+    return forward_fn, params, english_tokenizer, bio_tokenizer

@@ -5,13 +5,13 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 import jmp
-from trix.models.esm.model import ESMTransformer
 
 from nucleotide_transformer.chatNT.configs import (
     ESMTransformerConfig,
     GptConfig,
     PerceiverResamplerConfig,
 )
+from nucleotide_transformer.chatNT.esm_transformer import ESMTransformer
 from nucleotide_transformer.chatNT.gpt_decoder import GptDecoder
 from nucleotide_transformer.chatNT.multi_modal_perceiver_projection import (
     MultiModalPerceiverResamplerProjection,

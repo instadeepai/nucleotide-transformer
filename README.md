@@ -10,6 +10,7 @@ Transformer ](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) and [
 2. A collection of segmentation models using the Nucleotide Transformers as a backbone, allowing segmentation of a DNA sequence's
 genomic elements at single-nucleotide resolution: the [SegmentNT](https://www.biorxiv.org/content/10.1101/2024.03.14.584712v1.full.pdf) models.
 3. Similarly to the SegmentNT models, SegmentEnformer and SegmentBorzoi, allowing segmentation of a DNA sequence's genomic elements at single-nucleotide resolution, using respectively [Enformer](https://www.nature.com/articles/s41592-021-01252-x) and [Borzoi](https://www.nature.com/articles/s41588-024-02053-6)
+4. The [sCellTransformer](https://openreview.net/forum?id=VdX9tL3VXH) (sCT) model: a transformer-based model for modeling single-cell and spatial transcriptomics data.
 
 We are thrilled to open-source these works and provide the community with access to the
 code and pre-trained weights for these nine genomics language models and 2 segmentation models. Models from [The Nucleotide Transformer
@@ -263,8 +264,7 @@ import numpy as np
 from enformer.pretrained import get_pretrained_segment_enformer_model
 from enformer.features import FEATURES
 
-# Initialize CPU as default JAX device. This makes the code robust to memory leakage on
-# the devices.
+# Initialize CPU as default JAX device. This makes the code robust to memory leakage on the devices.
 jax.config.update("jax_platform_name", "cpu")
 
 backend = "cpu"
@@ -326,8 +326,7 @@ import numpy as np
 from borzoi.pretrained import get_pretrained_segment_borzoi_model
 from enformer.features import FEATURES
 
-# Initialize CPU as default JAX device. This makes the code robust to memory leakage on
-# the devices.
+# Initialize CPU as default JAX device. This makes the code robust to memory leakage on the devices.
 jax.config.update("jax_platform_name", "cpu")
 
 backend = "cpu"
@@ -365,13 +364,67 @@ print(f"Intron probabilities shape: {probabilities_intron.shape}")
 
 ```
 
+
+## sCellTransformer
+[sCellTransformer](https://openreview.net/forum?id=VdX9tL3VXH) (sCT) is a long-range convolutional-transformer framework for modeling single-cell and spatial transcriptomics data. sCT enables zero-shot gene expression imputation, cell-typing, and clustering, using discretized gene expression levels from raw data across up to 20,000 genes per cell.
+
+#### Get started 🚀
+
+To use the code and pre-trained models, simply:
+
+1. Clone the repository to your local machine.
+2. Install the package by running `pip install .`.
+
+You can then download and infer on a sequence with any of our models in only a few
+lines of codes:
+
+🔍 The notebook `examples/inference_sCellTransformer.ipynb` showcases how to infer with the model, on a dummy case and on a real dataset.
+
+```python
+import haiku as hk
+import jax
+import numpy as np
+
+from nucleotide_transformer.sCellTransformer.model import build_long_range_nt_fn
+from nucleotide_transformer.sCellTransformer.params import download_ckpt
+
+# Initialize CPU as default JAX device. This makes the code robust to memory leakage on the devices.
+jax.config.update("jax_platform_name", "cpu")
+backend = "cpu"
+devices = jax.devices(backend)
+num_devices = len(devices)
+
+# Load model
+parameters, config = download_ckpt()
+forward_fn = build_long_range_nt_fn(config)
+forward_fn = hk.transform(forward_fn)
+apply_fn = jax.pmap(forward_fn.apply, devices=devices, donate_argnums=(0,))
+random_key = jax.random.PRNGKey(seed=0)
+
+# Replicate over devices
+keys = jax.device_put_replicated(random_key, devices=devices)
+parameters = jax.device_put_replicated(parameters, devices=devices)
+
+# Initialize dummy data data
+num_cells = config.num_cells
+dummy_gene_expressions = np.random.randint(0, 5, size=(num_devices, 1, 19968 * num_cells))
+
+# Infer
+outs = apply_fn(parameters, keys, dummy_gene_expressions) 
+
+# Obtain the logits over the genomic features
+logits = outs["logits"]
+# Transform them on probabilities
+probabilities = np.asarray(jax.nn.softmax(logits[0, :, :, :5], axis=-1))[...,-1]
+
+```
+
 ---
 
 ## HuggingFace 🤗
 
 The collection of models presented in this repository are available on Instadeep's
-huggingface spaces here: [The Nucleotide Transformers space](https://huggingface.co/collections/InstaDeepAI/nucleotide-transformer-65099cdde13ff96230f2e592)
-and [Agro Nucleotide Transformer space](https://huggingface.co/collections/InstaDeepAI/agro-nucleotide-transformer-65b25c077cd0069ad6f6d344)!
+huggingface spaces here: [The Nucleotide Transformers space](https://huggingface.co/collections/InstaDeepAI/nucleotide-transformer-65099cdde13ff96230f2e592), [Agro Nucleotide Transformer space](https://huggingface.co/collections/InstaDeepAI/agro-nucleotide-transformer-65b25c077cd0069ad6f6d344), [sCellTransformer](https://huggingface.co/InstaDeepAI/sCellTransformer)!
 
 - **Nucleotide Transformer**: Two
 example notebooks showing how to finetune any of the models [with regular finetuning](https://github.com/huggingface/notebooks/blob/main/examples/nucleotide_transformer_dna_sequence_modelling.ipynb)

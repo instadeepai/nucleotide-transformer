@@ -32,13 +32,6 @@ TISSUES = [
 
 @dataclasses.dataclass
 class DatasetConfig:
-    # parameterizes the huggingface dataset to fetch CELLxGENES samples
-    # Parameters:
-    #     min_gene_expression: used to filter out genes with low expression.
-    #     gene_expression_num_bins: number of bins to use for digitizing gene
-    #         expression values.
-    #     apply_log_trick: whether to apply the log trick to the gene
-    #         expression values.
     min_gene_expression: float = 0.0
     gene_expression_num_bins: int = 51
     apply_log_trick: bool = False

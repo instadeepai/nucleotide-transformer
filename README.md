@@ -10,7 +10,7 @@ Transformer ](https://www.biorxiv.org/content/10.1101/2023.01.11.523679v3) and [
 2. A collection of segmentation models using the Nucleotide Transformers as a backbone, allowing segmentation of a DNA sequence's
 genomic elements at single-nucleotide resolution: the [SegmentNT](https://www.biorxiv.org/content/10.1101/2024.03.14.584712v1.full.pdf) models.
 3. Similarly to the SegmentNT models, SegmentEnformer and SegmentBorzoi, allowing segmentation of a DNA sequence's genomic elements at single-nucleotide resolution, using respectively [Enformer](https://www.nature.com/articles/s41592-021-01252-x) and [Borzoi](https://www.nature.com/articles/s41588-024-02053-6)
-4. The [sCellTransformer](https://openreview.net/forum?id=VdX9tL3VXH) (sCT) model: a transformer-based model for modeling single-cell and spatial transcriptomics data.
+4. The sCellTransformer (sCT) model: a transformer-based model for modeling single-cell and spatial transcriptomics data.
 
 We are thrilled to open-source these works and provide the community with access to the
 code and pre-trained weights for these nine genomics language models and 2 segmentation models. Models from [The Nucleotide Transformer
@@ -366,7 +366,7 @@ print(f"Intron probabilities shape: {probabilities_intron.shape}")
 
 
 ## sCellTransformer
-[sCellTransformer](https://openreview.net/forum?id=VdX9tL3VXH) (sCT) is a long-range convolutional-transformer framework for modeling single-cell and spatial transcriptomics data. sCT enables zero-shot gene expression imputation, cell-typing, and clustering, using discretized gene expression levels from raw data across up to 20,000 genes per cell.
+sCellTransformer (sCT) is a long-range convolutional-transformer framework for modeling single-cell and spatial transcriptomics data. sCT enables zero-shot gene expression imputation, cell-typing, and clustering, using discretized gene expression levels from raw data across up to 20,000 genes per cell.
 
 #### Get started 🚀
 

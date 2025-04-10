@@ -256,7 +256,7 @@ def upsample_x2(x: jnp.ndarray, method: str) -> jnp.ndarray:
 
 
 @dataclass
-class LongRangeNTConfig:
+class sCTConfig:
     """
     This architecture used a convolution tower to downsample the sequence length,
     followed by a Transformer torso and a deconvolution tower to upsample the sequence
@@ -346,10 +346,10 @@ class LongRangeNTConfig:
             self.key_size = self.embed_dim // self.attention_heads
 
 
-class LongRangeNT(hk.Module):
+class sCT(hk.Module):
     def __init__(
         self,
-        config: LongRangeNTConfig,
+        config: sCTConfig,
         name: Optional[str] = None,
     ):
         super().__init__(name=name)
@@ -581,8 +581,8 @@ class LongRangeNT(hk.Module):
         return outs  # type: ignore
 
 
-def build_long_range_nt_fn(
-    config: LongRangeNTConfig,
+def build_sct_fn(
+    config: sCTConfig,
     compute_dtype: jnp.dtype = jnp.float32,
     param_dtype: jnp.dtype = jnp.float32,
     output_dtype: jnp.dtype = jnp.float32,
@@ -626,7 +626,7 @@ def build_long_range_nt_fn(
     policy = jmp.Policy(
         compute_dtype=compute_dtype, param_dtype=param_dtype, output_dtype=output_dtype
     )
-    hk.mixed_precision.set_policy(LongRangeNT, policy)
+    hk.mixed_precision.set_policy(sCT, policy)
 
     # Remove it in batch norm to avoid instabilities
     norm_policy = jmp.Policy(
@@ -635,17 +635,17 @@ def build_long_range_nt_fn(
     hk.mixed_precision.set_policy(hk.LayerNorm, norm_policy)
     hk.mixed_precision.set_policy(hk.BatchNorm, norm_policy)
 
-    def long_range_nt_fn(
+    def sct_fn(
         tokens: jnp.ndarray, attention_mask: Optional[AttentionMask] = None
     ) -> Dict[str, jnp.ndarray]:
-        model = LongRangeNT(config, name=name)
+        model = sCT(config, name=name)
         return model(tokens)
 
-    return long_range_nt_fn
+    return sct_fn
 
 
-def build_long_range_nt_with_head_fn(
-    model_config: LongRangeNTConfig,
+def build_sct_with_head_fn(
+    model_config: sCTConfig,
     head_fn: Callable[
         [], Callable[[jnp.ndarray, SequenceMask], Dict[str, jnp.ndarray]]
     ],
@@ -655,7 +655,7 @@ def build_long_range_nt_with_head_fn(
     model_name: Optional[str] = None,
 ) -> Callable:
     """
-    Creates a forward pass for that LongRangeNT and adds the input head.
+    Creates a forward pass for that sCT and adds the input head.
 
     Args:
         model_config: Model hyperparameters.
@@ -685,12 +685,12 @@ def build_long_range_nt_with_head_fn(
         finetune_forward_fn = hk.transform(finetune_forward_fn)
 
     Returns:
-        LongRangeNT model forward function with indicated head.
+        sCT model forward function with indicated head.
     """
     policy = jmp.Policy(
         compute_dtype=compute_dtype, param_dtype=param_dtype, output_dtype=output_dtype
     )
-    hk.mixed_precision.set_policy(LongRangeNT, policy)
+    hk.mixed_precision.set_policy(sCT, policy)
 
     # Remove it in batch norm to avoid instabilities
     norm_policy = jmp.Policy(
@@ -699,14 +699,14 @@ def build_long_range_nt_with_head_fn(
     hk.mixed_precision.set_policy(hk.BatchNorm, norm_policy)
     hk.mixed_precision.set_policy(hk.LayerNorm, norm_policy)
 
-    def long_range_nt_fn(
+    def sct_fn(
         tokens: jnp.ndarray,
         attention_mask: Optional[AttentionMask] = None,
         sequence_mask: Optional[SequenceMask] = None,
     ) -> TransformerOutput:
         """Forward pass."""
         # Run the encoder over the inputs.
-        encoder = LongRangeNT(config=model_config, name=model_name)
+        encoder = sCT(config=model_config, name=model_name)
         outs: TransformerOutput = encoder(
             tokens=tokens,
             # attention_mask=attention_mask,
@@ -725,11 +725,11 @@ def build_long_range_nt_with_head_fn(
         outs.update(head_outs)
         return outs
 
-    return long_range_nt_fn
+    return sct_fn
 
 
-def build_long_range_nt_fn(
-    config: LongRangeNTConfig,
+def build_sct_fn(
+    config: sCTConfig,
     compute_dtype: jnp.dtype = jnp.float32,
     param_dtype: jnp.dtype = jnp.float32,
     output_dtype: jnp.dtype = jnp.float32,
@@ -773,7 +773,7 @@ def build_long_range_nt_fn(
     policy = jmp.Policy(
         compute_dtype=compute_dtype, param_dtype=param_dtype, output_dtype=output_dtype
     )
-    hk.mixed_precision.set_policy(LongRangeNT, policy)
+    hk.mixed_precision.set_policy(sCT, policy)
 
     # Remove it in batch norm to avoid instabilities
     norm_policy = jmp.Policy(
@@ -782,10 +782,10 @@ def build_long_range_nt_fn(
     hk.mixed_precision.set_policy(hk.LayerNorm, norm_policy)
     hk.mixed_precision.set_policy(hk.BatchNorm, norm_policy)
 
-    def long_range_nt_fn(
+    def sct_fn(
         tokens: jnp.ndarray, attention_mask: Optional[AttentionMask] = None
     ) -> Dict[str, jnp.ndarray]:
-        model = LongRangeNT(config, name=name)
+        model = sCT(config, name=name)
         return model(tokens)
 
-    return long_range_nt_fn
+    return sct_fn

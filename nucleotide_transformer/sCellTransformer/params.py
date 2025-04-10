@@ -20,7 +20,7 @@ import haiku as hk
 import joblib
 from huggingface_hub import hf_hub_download
 
-from nucleotide_transformer.sCellTransformer.model import LongRangeNTConfig
+from nucleotide_transformer.sCellTransformer.model import sCTConfig
 
 ENV_XDG_CACHE_HOME = "XDG_CACHE_HOME"
 DEFAULT_CACHE_DIR = "~/.cache"
@@ -69,6 +69,6 @@ def download_ckpt() -> Tuple[hk.Params, Any]:
     )
     with open(config_path, "r") as f:
         config_dict = json.load(f)
-    config = LongRangeNTConfig(**config_dict)
+    config = sCTConfig(**config_dict)
 
     return params, config

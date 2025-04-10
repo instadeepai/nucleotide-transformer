@@ -730,9 +730,6 @@ def build_sct_with_head_fn(
 
 def build_sct_fn(
     config: sCTConfig,
-    compute_dtype: jnp.dtype = jnp.float32,
-    param_dtype: jnp.dtype = jnp.float32,
-    output_dtype: jnp.dtype = jnp.float32,
     name: Optional[str] = None,
 ) -> Callable:
     """
@@ -762,13 +759,9 @@ def build_sct_fn(
         Enformer model forward function.
     """
 
-    assert {compute_dtype, param_dtype, output_dtype}.issubset(
-        {
-            jnp.bfloat16,
-            jnp.float32,
-            jnp.float16,
-        }
-    ), f"provide a dtype in {jnp.bfloat16, jnp.float32, jnp.float16}"
+    compute_dtype: jnp.dtype = (jnp.float32,)
+    param_dtype: jnp.dtype = (jnp.float32,)
+    output_dtype: jnp.dtype = (jnp.float32,)
 
     policy = jmp.Policy(
         compute_dtype=compute_dtype, param_dtype=param_dtype, output_dtype=output_dtype

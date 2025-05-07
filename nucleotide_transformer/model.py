@@ -104,6 +104,7 @@ class NucleotideTransformerConfig:
     ffn_embed_dim: int = 5120
     num_layers: int = 24
     positional_embedding: Optional[str] = "learned"
+    lm_head: Optional[str] = "simple"
     add_bias_kv: bool = False
     add_bias_ffn: bool = True
     use_rotary_embedding: bool = False
@@ -112,6 +113,8 @@ class NucleotideTransformerConfig:
     use_glu_in_ffn: bool = False
     layer_norm_eps: float = 1e-5
     pre_layer_norm: bool = True
+    bias_word_embedding: bool = False
+    mask_before_attention: bool = False
 
     # dropout
     token_dropout: bool = False

@@ -30,6 +30,7 @@ from nucleotide_transformer.model import (
 )
 from nucleotide_transformer.tokenizers import (
     FixedSizeNucleotidesKmersTokenizer,
+    NucleotidesKmersTokenizer,
     compute_tokens_to_ids_v2,
 )
 
@@ -43,6 +44,8 @@ MODEL_TO_REPO_MAPPING = {
     "segment_nt_multi_species": "segment_nt_multi_species",
     # AgroNT
     "1B_agro_nt": "agro-nucleotide-transformer-1b",
+    # Codon-NT
+    "codon_nt": "nucleotide-transformer-v2-50m-3mer-multi-species",
     # V2 models
     "50M_multi_species_v2": "nucleotide-transformer-v2-50m-multi-species",
     "100M_multi_species_v2": "nucleotide-transformer-v2-100m-multi-species",
@@ -199,10 +202,12 @@ def get_pretrained_model(
         "2B5_1000G",
         "2B5_multi_species",
         "50M_multi_species_v2",
+        "50M_3mer_multi_species_v2",
         "100M_multi_species_v2",
         "250M_multi_species_v2",
         "500M_multi_species_v2",
         "1B_agro_nt",
+        "codon_nt",
     ]
 
     if not (model_name in supported_models):
@@ -213,7 +218,7 @@ def get_pretrained_model(
     # Download weights and hyperparams
     parameters, hyperparams = download_ckpt_and_hyperparams(model_name)
 
-    if "v2" in model_name:
+    if "v2" in model_name or "codon_nt" in model_name:
         tokens_to_ids, _ = compute_tokens_to_ids_v2(k_mers=hyperparams["k_for_kmers"])
         tokenizer = FixedSizeNucleotidesKmersTokenizer(
             k_mers=hyperparams["k_for_kmers"],
@@ -222,7 +227,7 @@ def get_pretrained_model(
             tokens_to_ids=tokens_to_ids,
         )
 
-        # Adapat hyperparameters from config
+        # Adapt hyperparameters from config
         alphabet_size = len(tokenizer.vocabulary)
     else:
         tokenizer = FixedSizeNucleotidesKmersTokenizer(

@@ -2,7 +2,7 @@
   <img src="imgs/instadeep_logo.png" alt="InstaDeep AI for Genomics Logo" width="200"/>
 </p>
 
-<h1 align="center">InstaDeep AI for Genomics</h1>
+<h1 align="center">AI Foundation Models for Genomics</h1>
 
 <p align="center">
   <strong>A hub for InstaDeep's cutting-edge deep learning models and research for genomics, originating from the Nucleotide Transformer and its evolutions.</strong>

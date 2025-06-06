@@ -22,9 +22,9 @@ As detailed in the paper, the gene expressions are first binned into a pre-defin
 
 ## How to use 🚀
 
-We make Isoformer available in Jax in this repository and in PyTorch on HuggingFace. Examples on how to use it at:
+We make sCT available in Jax in this repository and in PyTorch on HuggingFace. Examples on how to use it at:
 - Jax: `../notebooks/sct/inference_sCT_jax_example.ipynb`
-- PyTorch: https://huggingface.co/InstaDeepAI/sCellTransformer.
+- PyTorch: `../notebooks/sct/inference_sCT_pytorch_example.ipynb`.
 
 ## Citing our work 📚
 

@@ -30,14 +30,6 @@ setup(
         "tqdm>=4.56.0",
         "regex>=2022.1.18",
         "huggingface-hub>=0.23.0",
-        "dm-haiku>=0.0.14",
-        "anndata>=0.11.0",
-        "jax>=0.6.0",
-        "scanpy>=1.11.2",
-        "cellxgene_census>=1.17.0",
-        "transformers>=4.52.4",
-        "torch>=2.7.1",
-        "einops>=0.8.1"
     ],
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",

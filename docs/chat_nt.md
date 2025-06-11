@@ -22,7 +22,7 @@ an autoregressive fashion, using low‑temperature sampling to produce classific
 ## Training Data  
 ChatNT was instruction‑tuned on a unified corpus covering 27 diverse tasks from DNA, RNA and proteins, spanning multiple species, tissues and biological processes. 
 This amounted to 605 million DNA tokens (≈ 3.6 billion bases) and 273 million English tokens, sampled uniformly over tasks for 2 billion instruction tokens.
-Examples of questions and sequences for each task, as well as additional task information, can be found in [Datasets_overview.csv](Datasets_overview.csv).
+Examples of questions and sequences for each task, as well as additional task information, can be found in [Datasets_overview.csv](https://huggingface.co/InstaDeepAI/ChatNT/blob/main/Datasets_overview.csv).
 
 ## Tokenization  
 DNA inputs are broken into overlapping 6‑mer tokens and padded or truncated to 2048 tokens (~ 12 kb). English prompts and 

@@ -6,7 +6,7 @@ across multiple biological tasks and modalities.
 
 * 📜 **[Read the Paper (Nature Machine Intelligence 2025)](https://www.biorxiv.org/content/10.1101/2024.04.30.591835v1)** 
 * 🤗 **[ChatNT on Hugging Face](https://huggingface.co/InstaDeepAI/ChatNT)**
-* 🚀 **[ChatNT Inference Notebook](./examples/inference_chatNT.ipynb)**
+* 🚀 **[ChatNT Inference Notebook](../notebooks/chat_nt/inference.ipynb)**
 
 <img src="../imgs/chatNT_figures.png" alt= "ChatNT and performance on downstream tasks" width="600">
 

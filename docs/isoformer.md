@@ -6,6 +6,7 @@ the RNA modality and ESM2 for the protein modality.
 
 * 📜 **[Read the Paper (NeurIPS 2024)](https://papers.nips.cc/paper_files/paper/2024/file/8f6b3692297e49e5d5c91ba00281379c-Paper-Conference.pdf)**
 * 🤗 **[Hugging Face Link](https://huggingface.co/InstaDeepAI/isoformer)**
+* 🚀 **[SegmentNT Inference Notebook (HF)](./notebooks/isoformer/inference.ipynb)**
 
 <img src="../imgs/isoformer.png" alt= "Isoformer" width="600">
 
@@ -17,7 +18,7 @@ In total, the dataset is made of ∼170k unique transcripts, of which 90k are pr
 
 ## How to use 🚀
 
-We make Isoformer available on HuggingFace and provide an example on how to use it at https://huggingface.co/InstaDeepAI/isoformer.
+We make Isoformer available on HuggingFace and provide an example on how to use it at `./notebooks/isoformer/inference.ipynb`.
 
 ## Citing our work 📚
 

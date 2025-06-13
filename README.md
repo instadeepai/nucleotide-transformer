@@ -102,6 +102,7 @@ A model designed for learning isoform-aware embeddings directly from RNA-seq dat
 * ➡️ **[Model Details & Usage](./docs/isoformer.md)**
 * 📜 **[Read the Paper (NeurIPS 2024)](https://papers.nips.cc/paper_files/paper/2024/file/8f6b3692297e49e5d5c91ba00281379c-Paper-Conference.pdf)**
 * 🤗 **[Hugging Face Link](https://huggingface.co/InstaDeepAI/isoformer)**
+* 🚀 **[SegmentNT Inference Notebook (HF)](./notebooks/isoformer/inference.ipynb)**
 
 ---
 

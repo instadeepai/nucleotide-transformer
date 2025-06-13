@@ -6,7 +6,7 @@ across multiple biological tasks and modalities.
 
 * 📜 **[Read the Paper (Nature Machine Intelligence 2025)](https://www.biorxiv.org/content/10.1101/2024.04.30.591835v1)** 
 * 🤗 **[ChatNT on Hugging Face](https://huggingface.co/InstaDeepAI/ChatNT)**
-* 🚀 **[ChatNT Inference Notebook](./examples/inference_chatNT.ipynb)**
+* 🚀 **[ChatNT Inference Notebook](../notebooks/chat_nt/inference.ipynb)**
 
 <img src="../imgs/chatNT_figures.png" alt= "ChatNT and performance on downstream tasks" width="600">
 
@@ -105,14 +105,12 @@ logits = outs["logits"]
 
 You can cite our model at:
 
-[ChatNT paper](https://www.biorxiv.org/content/10.1101/2024.04.30.591835v1)
+[ChatNT paper](https://www.nature.com/articles/s42256-025-01047-1)
 ```bibtex
-@article{richard2024chatnt,
-  title={Chatnt: A multimodal conversational agent for dna, rna and protein tasks},
-  author={de Almeida, Bernardo P and Richard, Guillaume and Dalla-Torre, Hugo and Blum, Christopher and Hexemer, Lorenz and Pandey, Priyanka and Laurent, Stefan and Lopez, Marie and Laterre, Alexandre and Lang, Maren and others},
-  journal={bioRxiv},
-  pages={2024--04},
-  year={2024},
-  publisher={Cold Spring Harbor Laboratory}
+@article{dealmeida2024chatnt,
+  title={A multimodal conversational agent for dna, rna and protein tasks},
+  author={de Almeida, Bernardo P and Richard, Guillaume and Dalla-Torre, Hugo and Blum, Christopher and Hexemer, Lorenz and Pandey, Priyanka and Laurent, Stefan and others},
+  journal={Nature Machine Intelligence},
+  year={2025},
 }
 ```

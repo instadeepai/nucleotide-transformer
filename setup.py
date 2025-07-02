@@ -30,6 +30,7 @@ setup(
         "tqdm>=4.56.0",
         "regex>=2022.1.18",
         "huggingface-hub>=0.23.0",
+        "pydantic==1.10.13",
     ],
     dependency_links=[
         "https://storage.googleapis.com/jax-releases/jax_releases.html",

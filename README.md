@@ -77,7 +77,7 @@ A multimodal conversational agent designed with a deep understanding of DNA biol
 
 * **Keywords:** Conversational AI, Multimodal, DNA Analysis, Genomics Chatbot, Interactive Biology
 * ➡️ **[Model Details & Usage](./docs/chat_nt.md)**
-* 📜 **[Read the Paper (Nature Machine Intelligence 2025)](https://www.nature.com/articles/s42256-025-01047-1)** 
+* 📜 **[Read the Paper (Nature Machine Intelligence 2025)](https://www.nature.com/articles/s42256-025-01047-1)**
 * 🤗 **[ChatNT on Hugging Face](https://huggingface.co/InstaDeepAI/ChatNT)**
 * 🚀 **[ChatNT Inference Notebook (Jax)](./notebooks/chat_nt/inference.ipynb)**
 
@@ -118,6 +118,30 @@ Our foundational transformer model for single-cell and spatial transcriptomics d
 
 ---
 
+### 🧪 BulkRNABertAdd commentMore actions
+
+BulkRNABert is a transformer-based, encoder-only foundation model designed for bulk RNA-seq data. It learns biologically meaningful representations from large-scale transcriptomic profiles.
+
+* **Keywords:** Bulk RNA-seq, Foundational Model, Transformer, Cancer prognosis
+* ➡️ **[Model Details & Usage](./docs/bulk_rna_bert.md)**
+* 📜 **[Read the Paper (Machine Learning for Health 2024)](https://proceedings.mlr.press/v259/gelard25a.html)**
+* 🤗 **[Hugging Face Link](https://huggingface.co/InstaDeepAI/BulkRNABert)**
+* 🚀 **[BulkRNABert Inference Notebook (HF)](notebooks/bulk_rna_bert/inference_bulkrnabert_pytorch_example.ipynb)**
+
+---
+
+### 🔗 MOJO (<u>M</u>ulti-<u>O</u>mics <u>JO</u>int representation)
+
+MOJO is a multimodal model designed learn embeddings of multi-omics data. It integrates bulk RNA-seq and DNA methylation data to generate powerful joint representations tailored for cancer-type classification and survival analysis.
+
+* **Keywords:** Bulk RNA-seq, DNA Methylation, Foundational Model, Transformer, Multimodal, Cancer prognosis
+* ➡️ **[Model Details & Usage](./docs/mojo.md)**
+* 📜 **[Read the Paper (ICML Workshop on Generative AI and Biology 2025)](https://www.biorxiv.org/content/10.1101/2025.06.25.661237v1)**
+* 🤗 **[Hugging Face Link](https://huggingface.co/InstaDeepAI/MOJO)**
+* 🚀 **[MOJO Inference Notebook (HF)](./notebooks/mojo/inference_mojo_pytorch_example.ipynb)**
+
+---
+
 ## 💡 Why Choose InstaDeep's Genomic Models?
 
 * **Built on Strong Foundations:** Leveraging large-scale pre-training and diverse genomic datasets.
@@ -145,7 +169,7 @@ To begin using models from this repository:
     ```bash
     pip install . # Installs the local package
     # Or, for a general requirements file if you have one:
-    # pip install -r requirements.txt 
+    # pip install -r requirements.txt
     ```
 
 For detailed instructions on individual models, including specific dependencies, downloading pre-trained weights, and Python usage examples, please refer to their dedicated documentation pages linked in the "Featured Models & Research Evolutions" section above (e.g., `./docs/nucleotide_transformer.md`).

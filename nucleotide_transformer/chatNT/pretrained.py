@@ -97,5 +97,11 @@ def get_chatNT():
     )
 
     params = download_ckpt()
+    params = {
+        key.replace("bio_brain_decoder", "chat_nt_decoder").replace(
+            "bio_brain_encoder", "chat_nt_encoder"
+        ): value
+        for key, value in params.items()
+    }
 
     return forward_fn, params, english_tokenizer, bio_tokenizer

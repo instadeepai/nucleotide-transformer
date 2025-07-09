@@ -24,7 +24,7 @@ setup(
         "jax>=0.3.25",
         "jaxlib>=0.3.25",
         "dm-haiku>=0.0.9",
-        "numpy>=1.23.5",
+        "numpy>=1.23.5,<2.0.0",
         "typing_extensions>=3.10.0",
         "joblib>=1.2.0",
         "tqdm>=4.56.0",

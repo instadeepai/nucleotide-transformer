@@ -118,7 +118,7 @@ Our foundational transformer model for single-cell and spatial transcriptomics d
 
 ---
 
-### 🧪 BulkRNABertAdd commentMore actions
+### 🧪 BulkRNABert
 
 BulkRNABert is a transformer-based, encoder-only foundation model designed for bulk RNA-seq data. It learns biologically meaningful representations from large-scale transcriptomic profiles.
 

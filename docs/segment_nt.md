@@ -203,12 +203,17 @@ print(f"Intron probabilities shape: {probabilities_intron.shape}")
 You can cite our models at:
 
 ```bibtex
-@article{de2024segmentnt,
-  title={SegmentNT: annotating the genome at single-nucleotide resolution with DNA foundation models},
-  author={de Almeida, Bernardo P and Dalla-Torre, Hugo and Richard, Guillaume and Blum, Christopher and Hexemer, Lorenz and Gelard, Maxence and Pandey, Priyanka and Laurent, Stefan and Laterre, Alexandre and Lang, Maren and others},
-  journal={bioRxiv},
-  pages={2024--03},
-  year={2024},
-  publisher={Cold Spring Harbor Laboratory}
+﻿@Article{deAlmeida2025segmentNT,
+title={Annotating the genome at single-nucleotide resolution with DNA foundation models},
+author={de Almeida, Bernardo P. and Dalla-Torre, Hugo and Richard, Guillaume and Blum, Christopher and Hexemer, Lorenz and G{\'e}lard, Maxence and Mendoza-Revilla, 
+Javier and Tang, Ziqi and Marin, Frederikke I. and Emms, David M. and Pandey, Priyanka and Laurent, Stefan and Lopez, Marie and Laterre, Alexandre and Lang, Maren
+and {\c{S}}ahin, U{\u{g}}ur and Beguir, Karim and Pierrot, Thomas},
+journal={Nature Methods},
+year={2025},
+month={Oct},
+day={29},
+issn={1548-7105},
+doi={10.1038/s41592-025-02881-2},
+url={https://doi.org/10.1038/s41592-025-02881-2}
 }
 ```

@@ -4,7 +4,7 @@ Segmentation models using transformer backbones (Nucleotide Transformers, Enform
 
 All models are used with a 1-dimensional U-Net segmentation head to predict the location of several types of genomics elements in a sequence at a single nucleotide resolution. These include gene (protein-coding genes, lncRNAs, 5’UTR, 3’UTR, exon, intron, splice acceptor and donor sites) and regulatory (polyA signal, tissue-invariant and tissue-specific promoters and enhancers, and CTCF-bound sites) elements. 
 
-* 📜 **[Read the Paper (bioRxiv preprint)](https://www.biorxiv.org/content/10.1101/2024.03.14.584712v1)**
+* 📜 **[Read the Paper (Nature Methods 2025)](https://www.nature.com/articles/s41592-025-02881-2)**
 * 🤗 **[SegmentNT Hugging Face Collection](https://huggingface.co/collections/InstaDeepAI/segmentnt-65eb4941c57808b4a3fe1319)**
 * 🚀 **[SegmentNT Inference Notebook (HF)](https://colab.research.google.com/#fileId=https%3A//huggingface.co/InstaDeepAI/segment_nt/blob/main/inference_segment_nt.ipynb)**
 
@@ -203,12 +203,17 @@ print(f"Intron probabilities shape: {probabilities_intron.shape}")
 You can cite our models at:
 
 ```bibtex
-@article{de2024segmentnt,
-  title={SegmentNT: annotating the genome at single-nucleotide resolution with DNA foundation models},
-  author={de Almeida, Bernardo P and Dalla-Torre, Hugo and Richard, Guillaume and Blum, Christopher and Hexemer, Lorenz and Gelard, Maxence and Pandey, Priyanka and Laurent, Stefan and Laterre, Alexandre and Lang, Maren and others},
-  journal={bioRxiv},
-  pages={2024--03},
-  year={2024},
-  publisher={Cold Spring Harbor Laboratory}
+﻿@Article{deAlmeida2025segmentNT,
+title={Annotating the genome at single-nucleotide resolution with DNA foundation models},
+author={de Almeida, Bernardo P. and Dalla-Torre, Hugo and Richard, Guillaume and Blum, Christopher and Hexemer, Lorenz and G{\'e}lard, Maxence and Mendoza-Revilla, 
+Javier and Tang, Ziqi and Marin, Frederikke I. and Emms, David M. and Pandey, Priyanka and Laurent, Stefan and Lopez, Marie and Laterre, Alexandre and Lang, Maren
+and {\c{S}}ahin, U{\u{g}}ur and Beguir, Karim and Pierrot, Thomas},
+journal={Nature Methods},
+year={2025},
+month={Oct},
+day={29},
+issn={1548-7105},
+doi={10.1038/s41592-025-02881-2},
+url={https://doi.org/10.1038/s41592-025-02881-2}
 }
 ```

@@ -65,7 +65,7 @@ Segmentation models using transformer backbones (Nucleotide Transformers, Enform
 
 * **Keywords:** Genome Segmentation, Single-Nucleotide Resolution, Genomic Elements, U-Net, Enformer, Borzoi
 * ➡️ **[Model Details & Usage](./docs/segment_nt.md)** (Covers SegmentNT, SegmentEnformer, SegmentBorzoi)
-* 📜 **[Read the Paper (bioRxiv preprint)](https://www.biorxiv.org/content/10.1101/2024.03.14.584712v1)**
+* 📜 **[Read the Paper (Nature Methods 2025)](https://www.nature.com/articles/s41592-025-02881-2)**
 * 🤗 **[Hugging Face Collection](https://huggingface.co/collections/InstaDeepAI/segmentnt-65eb4941c57808b4a3fe1319)**
 * 🚀 **[SegmentNT Inference Notebook (HF)](https://colab.research.google.com/#fileId=https%3A//huggingface.co/InstaDeepAI/segment_nt/blob/main/inference_segment_nt.ipynb)**
 

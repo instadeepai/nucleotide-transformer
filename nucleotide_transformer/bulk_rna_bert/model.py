@@ -130,7 +130,6 @@ class BulkRNABert(hk.Module):
         outs["logits"] = lm_head_outs["logits"]
         return outs
 
-
 def build_bulk_rna_bert_forward_fn(
     model_config: BulkRNABertConfig,
     compute_dtype: jnp.dtype = jnp.float32,

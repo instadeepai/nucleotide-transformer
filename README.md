@@ -36,6 +36,19 @@ This section highlights the key models and research directions from our team. Ea
 
 ---
 
+### 🧬 The Nucleotide Transformer v3 (NTv3)
+
+A unified multi-species foundation model that integrates representation learning, functional-track and genome-annotation prediction, and controllable sequence generation within a single efficient framework. NTv3 uses a U-Net-like architecture with single-base tokenization to enable efficient modeling of contexts up to 1 Mb at nucleotide resolution. Pretrained on 9 trillion base pairs from OpenGenome2 and post-trained on > 16,000 functional tracks from 24 animal and plant species, NTv3 achieves state-of-the-art accuracy for functional-track prediction and genome annotation across species. The model can be fine-tuned into a controllable generative model for designing enhancer sequences with specified activity levels, validated experimentally via STARR-seq.
+
+* **Keywords:** Multi-species Foundation Model, Long-context (1 Mb), Single-base Resolution, Functional-track Prediction, Genome Annotation, Controllable Sequence Generation, U-Net Architecture, Masked Diffusion
+* ➡️ **[Model Details & Usage](./docs/nucleotide_transformer_v3.md)** 
+* 📜 **Read the Paper:** Coming Soon
+* 🤗 **[Hugging Face Collection](https://huggingface.co/spaces/InstaDeepAI/ntv3)**
+
+
+
+---
+
 ### 🧬 The Nucleotide Transformer (NT)
 
 Our foundational language models leverage DNA sequences from over 3,200 diverse human genomes and 850 genomes from a wide range of species. These models provide extremely accurate molecular phenotype prediction compared to existing methods. *This family includes multiple variants (e.g., 500M_human_ref, 2B5_1000G, NT-v2 series) which are detailed further in the specific documentation.*

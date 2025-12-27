@@ -42,7 +42,7 @@ A unified multi-species foundation model that integrates representation learning
 
 * **Keywords:** Multi-species Foundation Model, Long-context (1 Mb), Single-base Resolution, Functional-track Prediction, Genome Annotation, Controllable Sequence Generation, U-Net Architecture, Masked Diffusion
 * ➡️ **[Model Details & Usage](./docs/nucleotide_transformer_v3.md)** 
-* 📜 **Read the Paper:** Coming Soon
+* 📜 **[Read the Paper (bioRxiv)](https://www.biorxiv.org/content/10.64898/2025.12.22.695963v1)**
 * 🤗 **[Hugging Face Collection](https://huggingface.co/spaces/InstaDeepAI/ntv3)**
 
 

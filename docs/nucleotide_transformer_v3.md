@@ -2,26 +2,60 @@
 
 The Nucleotide Transformer v3 (NTv3) is a **multi-species genomics foundation model** that unifies representation learning, functional-track prediction, genome annotation, and controllable sequence generation within a single framework. Unlike existing specialized approaches, NTv3 combines **long-context modeling (up to 1 Mb)**, **base-resolution prediction**, and **controllable generation** across organisms and modalities.
 
-NTv3 uses a **U-Net-like architecture** with **single-base tokenization**, enabling efficient processing of million-nucleotide contexts at nucleotide resolution. We pretrain on **9 trillion base pairs** from OpenGenome2 using masked language modeling, followed by post-training with a joint objective that integrates continued self-supervision with supervised learning on **~16,000 functional tracks** and annotation labels from **24 animal and plant species**.
+NTv3 uses a **U-Net-like architecture** with **single-base tokenization**, enabling efficient processing of million-nucleotide contexts at nucleotide resolution. We pretrain on **9 trillion base pairs** from OpenGenome2 using masked language modeling, followed by post-training with a joint objective that integrates continued self-supervision with supervised learning on **16,262 functional tracks** and annotation labels from **15 animal and plant species**.
 
 After post-training, NTv3 achieves **state-of-the-art accuracy** for functional-track prediction and genome annotation, outperforming leading baselines on established benchmarks and on **NTv3 Benchmark (NTv3Bench)**, our new controlled fine-tuning suite with 32 kb inputs and base-resolution outputs. We further demonstrate that NTv3 can be fine-tuned into a **controllable generative model** via masked diffusion, enabling design of enhancer sequences with specified activity levels—validated experimentally via STARR-seq *in cellulo*.
 
+
 ---
 
 <p align="center">
-  <strong>📜 <a href="https://www.biorxiv.org/content/10.64898/2025.12.22.695963v1">Read the Paper</a></strong> &nbsp;•&nbsp;
+  <strong>📜 <a href="https://www.biorxiv.org/content/10.64898/2025.12.22.695963">Read the Paper</a></strong> &nbsp;•&nbsp;
   <strong>🚀 <a href="https://huggingface.co/spaces/InstaDeepAI/ntv3">Hugging Face Space</a></strong> &nbsp;•&nbsp;
-  <strong>🗒️ <a href="../notebooks/nucleotide_transformer_v3">Notebook Tutorials</a></strong> &nbsp;•&nbsp;
-  <strong>🧪 <a href="#-ntv3-benchmark">NTv3Bench</a></strong>
+  <strong>🗒️ <a href="../notebooks/nucleotide_transformer_v3">JAX Notebook Tutorials</a></strong> &nbsp;•&nbsp;
+  <strong>🧪 <a href="#-ntv3-benchmark">NTv3 Benchmark</a></strong>
 </p>
 
 ---
 
 <p align="center">
-  <img src="../imgs/nucleotide_transformer_v3.png" alt="Nucleotide Transformer v3 Overview" width="800">
+  <img src="../imgs/nucleotide_transformer_v3.png" alt="Nucleotide Transformer v3 overview" width="850">
 </p>
 
-<p align="center"><em><strong>Overview:</strong> (A) Pre-training on OpenGenome2 using a two-phase curriculum with sequence-length mixing. (B) Core U-Net-style architecture for 1 Mb, single-bp modeling. (C) Multispecies post-training on functional tracks and genome annotations. (D) Supervised fine-tuning on diverse downstream tasks. (E) Generative extension via masked diffusion for controllable enhancer design.</em></p>
+<p align="center"><em><strong>Overview:</strong> one U-Net backbone, pretrained by masked-token prediction on unlabeled genomes, then specialised into the released capabilities. A convolutional tower reads the sequence, a transformer tower carries long-range context up to 1 Mb, and a deconvolutional tower returns predictions at single-base resolution. Tracks post-training gives functional-track prediction, annotation fine-tuning gives <em>ab initio</em> gene calling per clade, and generative post-training by masked diffusion gives controllable enhancer design.</em></p>
+
+---
+
+The `nucleotide_transformer_v3` package loads the released models from their
+Flax weights. This page covers the pretrained and tracks models:
+
+- **NTv3 pretrained**: the backbone with its masked-language-model head, for
+  embeddings and masked-token prediction.
+- **NTv3 tracks**: the same backbone with a species-conditioned head predicting
+  7,362 functional-genomics tracks (bigwig signal) at single-base resolution.
+
+```python
+from nucleotide_transformer_v3.pretrained import load_pretrained_model, load_tracks_model
+
+model, tokenizer = load_pretrained_model("NTv3_pretrained")
+model, tokenizer, (species_tokenizer,) = load_tracks_model("NTv3_tracks")
+```
+
+The three genome-annotation models (`NTv3_annot_mammals`, `NTv3_annot_plants`,
+`NTv3_annot_insects`) load with `load_annotation_model`; see
+[ntv3_genome_annotation.md](./ntv3_genome_annotation.md).
+
+> [!NOTE]
+> Earlier versions of this package loaded the `NTv3_*_pre` / `NTv3_*_post`
+> checkpoints (`NTv3_100M_pre`, `NTv3_650M_post`, ...), which use a different
+> architecture. That code has been removed from `main`. It is still available at
+> commit [`2dc37b8`](https://github.com/instadeepai/nucleotide-transformer/tree/2dc37b86e16a6970fbc731751f7719d9f676f7f9):
+> [package](https://github.com/instadeepai/nucleotide-transformer/tree/2dc37b86e16a6970fbc731751f7719d9f676f7f9/nucleotide_transformer_v3) ·
+> [docs](https://github.com/instadeepai/nucleotide-transformer/blob/2dc37b86e16a6970fbc731751f7719d9f676f7f9/docs/nucleotide_transformer_v3.md) ·
+> [notebooks](https://github.com/instadeepai/nucleotide-transformer/tree/2dc37b86e16a6970fbc731751f7719d9f676f7f9/notebooks/nucleotide_transformer_v3)
+>
+> That commit installs the same `nucleotide_transformer` distribution and the same
+> `nucleotide_transformer_v3` module as `main`, so install it in a separate environment.
 
 ---
 
@@ -29,14 +63,19 @@ After post-training, NTv3 achieves **state-of-the-art accuracy** for functional-
 
 1. [🎯 Training Overview](#-training-overview)
 2. [✨ Key Capabilities](#-key-capabilities)
-3. [📦 Model Variants and Sizes](#-model-variants-and-sizes)
-4. [🔬 Ablations and Intermediate Checkpoints](#-ablations-and-intermediate-checkpoints)
+3. [📦 Models](#-models)
+4. [⬇️ Where the weights come from](#️-where-the-weights-come-from)
 5. [🏗️ Architecture](#️-architecture)
-6. [🔤 Tokenization](#-tokenization)
-7. [🚀 How to Use](#-how-to-use)
-8. [📏 Sequence Length Requirements](#-sequence-length-requirements)
-9. [🧪 NTv3 Benchmark](#-ntv3-benchmark)
-10. [📚 Citing Our Work](#-citing-our-work)
+6. [🔤 Tokenization: the two models differ](#-tokenization-the-two-models-differ)
+7. [📏 Window and crop](#-window-and-crop)
+8. [🐍 Pretrained model](#-pretrained-model)
+9. [🐍 Tracks model](#-tracks-model)
+10. [🧬 Genome annotation](#-genome-annotation)
+11. [🧪 Verification](#-verification)
+12. [⚖️ Known limitations](#️-known-limitations)
+13. [🧪 NTv3 Benchmark](#-ntv3-benchmark)
+14. [📚 Citing Our Work](#-citing-our-work)
+15. [🕰️ The initial release (2025)](#️-the-initial-release-2025)
 
 ---
 
@@ -46,7 +85,7 @@ NTv3 is trained in two stages:
 
 1. **Pre-training:** Trained on **9 trillion base pairs** from OpenGenome2 using base-resolution masked language modeling (MLM), scaling context to 1 Mb through a length curriculum and mixed-length training.
 
-2. **Post-training:** Joint objective integrating continued self-supervision with supervised learning on **~16,000 functional tracks** and annotation labels from **24 animal and plant species**.
+2. **Post-training:** Joint objective integrating continued self-supervision with supervised learning on **16,262 functional tracks** and annotation labels from **15 animal and plant species**.
 
 > [!TIP]
 > After post-training, NTv3 achieves **state-of-the-art accuracy** for functional-track prediction and genome annotation across species, outperforming leading sequence-to-function and foundation-model baselines. Notably, NTv3 is the **first sequence-to-function-at-scale model extended to the plant regime**, enabling base-resolution prediction of ~6,000 functional tracks across key plant species.
@@ -64,60 +103,50 @@ NTv3 is trained in two stages:
 
 ---
 
-## 📦 Model Variants and Sizes
+## 📦 Models
 
-### Pre-trained Models
+| Name | Class | Parameters | Vocabulary | Outputs |
+| --- | --- | --- | --- | --- |
+| `NTv3_pretrained` | `NTv3` | 703,349,146 | 11 tokens, uppercase only | `logits`, `embedding`, `after_transformer_embedding`, `before_transformer_embedding` |
+| `NTv3_tracks`, `NTv3_tracks_1mb` | `DiscreteConditionedNTv3WithTracksHeads` | 711,256,680 each | 16 tokens, soft-masked | `bigwig_tracks_logits`, `species_logits`, `logits`, `embedding`, both transformer embeddings |
+| `NTv3_annot_mammals`, `NTv3_annot_plants`, `NTv3_annot_insects` | `NTv3WithTracksHeads` | 703,446,690 each | 16 tokens, soft-masked | `bed_tracks_logits` over 15 annotation states, plus the embeddings |
 
-Pre-trained models using masked language modeling on OpenGenome2 with context length ≤1 Mb:
+Both share one backbone geometry: a U-Net with 6 downsampling blocks around a
+14-layer transformer (embedding dim 2048, 8 query heads, 2 key/value heads).
+The tracks models have no BED / annotation head. `NTv3_tracks` takes inputs of
+16 kb to 1 Mb; `NTv3_tracks_1mb`, the 1 Mb specialist it was finetuned from, was
+trained on 1 Mb inputs only.
 
-| Model | Parameters |
-|:------|:-----------|
-| **[NTv3_8M_pre](https://huggingface.co/InstaDeepAI/NTv3_8M_pre)** | 8M |
-| **[NTv3_100M_pre](https://huggingface.co/InstaDeepAI/NTv3_100M_pre)** | 100M |
-| **[NTv3_650M_pre](https://huggingface.co/InstaDeepAI/NTv3_650M_pre)** | 650M |
+## ⬇️ Where the weights come from
 
-### Post-trained Models
+Each name resolves to the `jax_model/` subfolder of a Hugging Face repository,
+downloaded into the Hugging Face cache on first use:
 
-Post-trained models extend pre-trained models with supervised objectives for functional tracks and genome annotations across 24 species:
+| Name | Repository | Files in `jax_model/` |
+| --- | --- | --- |
+| `NTv3_pretrained` | [`InstaDeepAI/NTv3_pretrained`](https://huggingface.co/InstaDeepAI/NTv3_pretrained) | `hyperparameters.json`, `flax_model.msgpack`, `tokenizer_config.json` |
+| `NTv3_tracks` | [`InstaDeepAI/NTv3_tracks`](https://huggingface.co/InstaDeepAI/NTv3_tracks) | the same, plus `conditions_tokenizers.json` |
+| `NTv3_tracks_1mb` | [`InstaDeepAI/NTv3_tracks_1mb`](https://huggingface.co/InstaDeepAI/NTv3_tracks_1mb) | the same as `NTv3_tracks` |
 
-| Model | Parameters |
-|:------|:-----------|
-| **[NTv3_100M_post](https://huggingface.co/InstaDeepAI/NTv3_100M_post)** | 100M |
-| **[NTv3_650M_post](https://huggingface.co/InstaDeepAI/NTv3_650M_post)** | 650M |
+`load_annotation_model` resolves `NTv3_annot_mammals`, `NTv3_annot_plants` and
+`NTv3_annot_insects` the same way; see
+[ntv3_genome_annotation.md](./ntv3_genome_annotation.md) for those models. Every
+download also fetches the export's `roundtrip_fixture.npz` (164 KB for the
+pretrained model, 40 MB for tracks), which `check_release` replays.
 
-**These models can predict:**
-- **Functional tracks** (BigWig): ~16,000 tracks including chromatin accessibility, histone modifications, and transcription factor binding
-- **Genome annotations** (BED): Gene elements, regulatory regions, and more
+The same repositories carry the PyTorch weights at their root. They are gated:
+request access on any of their Hub pages, where one approval covers all of them,
+then run `huggingface-cli login`.
 
----
+Every loader also takes a local directory holding those files, and a
+`revision=` to pin a Hub commit. Loading from a directory never imports
+`huggingface_hub`.
 
-## 🔬 Ablations and Intermediate Checkpoints
-
-> [!NOTE]
-> In addition to the main production models, we provide intermediate checkpoints and ablation variants for research purposes.
-
-| Model | Params | Downsamples | Stage | Max Context | Notes |
-|:------|:-------|:------------|:------|:------------|:------|
-| **[NTv3_8M_pre_8kb](https://huggingface.co/InstaDeepAI/NTv3_8M_pre_8kb)** | 8M | 7 | Pre | 8kb | Checkpoint after first stage of pre-training |
-| **[NTv3_100M_pre_8kb](https://huggingface.co/InstaDeepAI/NTv3_100M_pre_8kb)** | 100M | 7 | Pre | 8kb | Checkpoint after first stage of pre-training |
-| **[NTv3_100M_post_131kb](https://huggingface.co/InstaDeepAI/NTv3_100M_post_131kb)** | 100M | 7 | Post | 131kb | Checkpoint after second stage of post-training |
-| **[NTv3_650M_pre_8kb](https://huggingface.co/InstaDeepAI/NTv3_650M_pre_8kb)** | 650M | 7 | Pre | 8kb | Checkpoint after first stage of pre-training |
-| **[NTv3_650M_post_131kb](https://huggingface.co/InstaDeepAI/NTv3_650M_post_131kb)** | 650M | 7 | Post | 131kb | Checkpoint after first stage of post-training |
-
-### 5 Downsample Models (Experimental)
-
-These models are experimental and not used in the main paper results.
-
-| Model | Params | Downsamples | Stage | Max Context | Notes |
-|:------|:-------|:------------|:------|:------------|:------|
-| **[NTv3_5downsample_pre_8kb](https://huggingface.co/InstaDeepAI/NTv3_5downsample_pre_8kb)** | 592M | 5 | Pre | 8kb | Checkpoint after first stage |
-| **[NTv3_5downsample_pre](https://huggingface.co/InstaDeepAI/NTv3_5downsample_pre)** | 592M | 5 | Pre | 1Mb | Full pre-trained model |
-| **[NTv3_5downsample_post_131kb](https://huggingface.co/InstaDeepAI/NTv3_5downsample_post_131kb)** | 592M | 5 | Post | 131kb | Checkpoint after second stage |
-| **[NTv3_5downsample_post](https://huggingface.co/InstaDeepAI/NTv3_5downsample_post)** | 592M | 5 | Post | 1Mb | Full post-trained model |
-
-> [!NOTE]
-> - **Stage:** "Pre" = pre-trained (MLM only), "Post" = post-trained (MLM + supervised objectives)
-> - **Downsamples:** 7 downsamples require sequence length divisible by 128; 5 downsamples require divisible by 32
+The loaders refuse artifacts that do not match the model they build: a
+variable that is missing, left over or at the wrong shape; tracks weights
+passed to `load_pretrained_model`; a tracks model whose species conditioning
+was stripped; a tokenizer whose size disagrees with the model. Each of these
+would otherwise load and predict wrong without raising.
 
 ---
 
@@ -125,157 +154,261 @@ These models are experimental and not used in the main paper results.
 
 NTv3 employs a U-Net-like architecture optimized for long-range genomic modeling:
 
-1. **Single-base tokenization:** Each nucleotide (A, T, C, G, N) is tokenized individually, enabling true base-pair resolution
-2. **Convolutional downsampling tower:** Reduces sequence length by $2^n$ where $n$ = `num_downsamples` through convolutions
-3. **Transformer core:** Processes the compressed representation with self-attention
-4. **Deconvolutional upsampling tower:** Restores original sequence resolution with skip connections
-5. **Species-conditioning:** Adaptive layer norms for multi-species support
+1. **Single-base tokenization:** each nucleotide is its own token, for true base-pair resolution.
+2. **Convolutional downsampling tower:** an initial 2x pool followed by `num_downsamples` blocks that each halve the length, so the sequence shrinks by `config.total_downsampling = 2 ** (num_downsamples + 1)`, 128 for the released models.
+3. **Transformer core:** grouped-query self-attention over the compressed representation.
+4. **Deconvolutional upsampling tower:** restores the original resolution with skip connections.
+5. **Species conditioning (tracks model):** a species embedding FiLM-modulates the bigwig head; the trunk itself is not conditioned.
 
 This design enables **efficient processing of sequences up to 1 Mb** while maintaining **single-nucleotide resolution outputs**.
 
 ---
 
-## 🔤 Tokenization
+## 🔤 Tokenization: the two models differ
 
-Unlike previous Nucleotide Transformer versions that use 6-mer tokenization, NTv3 uses **single-base tokenization**:
+| | `NTv3_pretrained` | `NTv3_tracks` |
+| --- | --- | --- |
+| Vocabulary | `<unk> <pad> <mask> <cls> <eos> <bos> A T C G N` | the same, plus `a t c g n` (ids 11-15) |
+| Soft-masked (lowercase) input | **uppercase it first** | **keep it**: the model was trained on repeat-masked assemblies |
+
+**The pretrained vocabulary has no lowercase bases.** On a soft-masked
+sequence, which is most of any UCSC or Ensembl FASTA, `tokenizer.tokenize`
+returns `<unk>` for every lowercase base without any error.
+
+`np_tokenize` / `batch_np_tokenize` are worse: they stop at the first
+character outside the vocabulary. With NumPy < 2.3 they **silently return a
+truncated array** (`"ACGTacgtACGT"`, 12 bp, comes back as `[6, 8, 9, 7, 0]`),
+and with NumPy 2.3 and later they raise an unhelpful `ValueError`. Check the
+token count against the sequence length after tokenizing.
+
+Neither vocabulary has IUPAC ambiguity codes (`R`, `Y`, ...), so map them to
+`N` (or `n`, to keep a soft mask) before tokenizing:
 
 ```python
-# Standard nucleotide vocabulary
-standard_tokens = ["A", "T", "C", "G", "N"]
+import re
 
-# Special tokens
-special_tokens = ["<unk>", "<pad>", "<mask>", "<cls>", "<eos>", "<bos>"]
+pretrained_seq = re.sub(r"[^ACGTN]", "N", seq.upper())
+tracks_seq = re.sub(r"[^ACGTNacgtn]", lambda m: "n" if m.group().islower() else "N", seq)
 
-# Example tokenization
-dna_sequence = "ACGTACGT"
-tokenized = ["A", "C", "G", "T", "A", "C", "G", "T"]
+tokens = tokenizer.batch_np_tokenize([pretrained_seq])
+assert tokens.shape[1] == len(pretrained_seq)  # catches a silent truncation
 ```
 
-> [!IMPORTANT]
-> The sequence length must be divisible by 2^num_downsamples for the U-Net architecture to work correctly. For a model with 7 downsampling layers, the sequence length must be divisible by 128.
+## 📏 Window and crop
+
+- **Length.** Any sequence length that is a multiple of 128 works
+  (`config.total_downsampling`). Both models were released at **1,048,576 bp**.
+  That value is declared, not enforced: it is recorded in
+  `hyperparameters.json` under `provenance.released_sequence_length`, and the
+  architecture itself stores no length.
+- **Crop (tracks only).** `bigwig_tracks_logits` covers the central
+  `keep_target_center_fraction = 0.375` of the input: `int(0.375 * L)` positions,
+  so **393,216 bp** of a 1 Mb window, starting `int(0.3125 * L)` bp into it.
+  The LM `logits` and `embedding` stay full length.
+
+## 🐍 Pretrained model
+
+```python
+import jax.numpy as jnp
+from nucleotide_transformer_v3.pretrained import load_pretrained_model
+
+model, tokenizer = load_pretrained_model("NTv3_pretrained")  # bf16 compute by default
+
+tokens = jnp.asarray(tokenizer.batch_np_tokenize([seq.upper()]))  # (batch, L)
+
+outs = model(tokens)
+outs["logits"]                       # (batch, L, 11)
+outs["embedding"]                    # (batch, L, 1024), single-base resolution
+outs["after_transformer_embedding"]  # (batch, L / 128, 2048), transformer trunk
+
+embeddings = model(tokens, skip_lm_head=True)  # same, without the LM projection
+```
+
+Masked-token prediction: replace positions with `tokenizer.mask_token_id` and
+read `logits` there. Notebook:
+[inference_pretrained.ipynb](../notebooks/nucleotide_transformer_v3/inference_pretrained.ipynb).
+
+## 🐍 Tracks model
+
+```python
+import jax.numpy as jnp
+from nucleotide_transformer_v3.pretrained import load_tracks_model
+
+model, tokenizer, (species_tokenizer,) = load_tracks_model("NTv3_tracks")
+config = model.config
+
+tokens = jnp.asarray(tokenizer.batch_np_tokenize([seq]))            # soft mask kept
+species = jnp.asarray([species_tokenizer.token_to_id("human")])      # one id per sequence
+
+hg38 = config.bigwigs_per_file_assembly["hg38"]
+track_indices = jnp.asarray([hg38.index("ENCSR000AKO"), hg38.index("ENCSR921NMD")])
+
+outs = model(tokens, [species], track_indices=track_indices, skip_lm_head=True)
+outs["bigwig_tracks_logits"]  # (batch, int(0.375 * L), len(track_indices))
+```
+
+### Always pass `track_indices`
+
+The head is 7,362 tracks wide at single-base resolution. Without
+`track_indices` it computes every track at every position: at 1 Mb that output
+alone is 7,362 × 393,216 float32 values, **~10.8 GiB per sequence**, before
+any activation. With `track_indices` only the selected columns are computed.
+
+### Track indices
+
+A track's index is its position in `config.bigwigs_per_file_assembly[assembly]`,
+and that is also its output column: the single head is shared positionally
+across assemblies. An assembly owns only the first
+`len(bigwigs_per_file_assembly[assembly])` columns; the rest belong to other
+assemblies and mean nothing for it.
+
+| Assembly | Tracks | Assembly | Tracks | Assembly | Tracks |
+| --- | --- | --- | --- | --- | --- |
+| `hg38` | 7,362 | `Glycine_max_v2.1` | 590 | `EquCab3.0` | 96 |
+| `mm10` | 2,450 | `Gossypium_hirsutum_v2.1` | 319 | `Sscrofa11` | 94 |
+| `TAIR10` | 1,899 | `dm6` | 180 | `Oar_v3.1` | 63 |
+| `IRGSP-1.0` | 1,392 | | | `GRCg6a` | 55 |
+| `Zm-B73-REFERENCE-NAM-5.0` | 921 | | | `WBcel235` | 42 |
+| `IWGSC` | 776 | | | `GRCz11` | 23 |
+
+### Species
+
+The species condition reaches the bigwig head through FiLM, so the id changes
+every predicted track. Take it from `species_tokenizer`, which ships with the
+weights in `conditions_tokenizers.json` and whose `token_to_id` raises on an
+unknown name. The ids, for reference:
+
+| Id | Species | Id | Species | Id | Species |
+| --- | --- | --- | --- | --- | --- |
+| 6 | `horse` | 11 | `rice` | 16 | `caenorhabditis_elegans` |
+| 7 | `chicken` | 12 | `wheat` | 17 | `maize` |
+| 8 | `zebrafish` | 13 | `sheep` | 18 | `drosophila` |
+| 9 | `soybean` | 14 | `pig` | 19 | `human` |
+| 10 | `cotton` | 15 | `arabidopsis` | 20 | `mouse` |
+
+Ids 0-5 are the special tokens. The species names and the assembly names above
+are two separate vocabularies; pair them by the usual reference genome of each
+species (`human` with `hg38`, `mouse` with `mm10`, and so on).
+
+Notebook, predicting eight K562 and HepG2 tracks over 131 kb of chr19:
+[inference_tracks.ipynb](../notebooks/nucleotide_transformer_v3/inference_tracks.ipynb).
+
+## 🧬 Genome annotation
+
+The three annotation checkpoints call genes from sequence alone, one model per
+clade. They are fine-tuned from the same backbone and emit per-base posteriors
+over 15 states (intergenic, intron, CDS in three frames, splice sites, start
+and stop codons), which a Viterbi decoder turns into gene models on both
+strands.
+
+The shipped entry point does the whole job, FASTA in and GFF3 out:
+
+```bash
+pip install "nucleotide-transformer[gpu]"
+
+ntv3-annotate --genome /data/cow/genome.fa --model_cfg mammals --out /data/cow.gff3.gz
+```
+
+`--model_cfg` picks the clade: `mammals`, `plants` or `insects`. The weights are
+pulled from the Hub on first use and cached, so nothing needs staging.
+
+```bash
+ntv3-annotate --list_cfg             # what is registered
+ntv3-annotate --show_cfg mammals     # everything one entry says
+```
+
+Both of those run with no accelerator and no weights downloaded.
+
+Install the `gpu` extra. A plain install gives you a CPU-only JAX that
+annotates a mammalian genome in days rather than about 45 minutes, and the only
+symptom is that it seems slow. Check with
+`python -c "import jax; print(jax.devices())"` and look for `CudaDevice`.
+
+GTF output, the spliced CDS and its protein translation, resume, the
+post-processing filters and the Python API are all in
+[ntv3_genome_annotation.md](./ntv3_genome_annotation.md).
+
+Calling the model directly rather than the pipeline: annotation is not
+conditioned on species, so all three clades take an empty conditioning list.
+
+```python
+from nucleotide_transformer_v3.pretrained import load_annotation_model
+
+model, tokenizer = load_annotation_model("NTv3_annot_mammals")
+```
 
 ---
 
-## 🚀 How to Use
+## 🧪 Verification
 
-### Pre-trained Models
+The Flax weights were exported from the released checkpoints, with a
+`roundtrip_fixture.npz` of inputs and reference outputs written beside them.
+`check_release` replays it through the loaders above, from a released name or a
+directory:
 
-To use the pre-trained models in JAX:
-
-```python
-import jax.numpy as jnp
-from nucleotide_transformer_v3.pretrained import get_pretrained_ntv3_model
-
-# Get pretrained model
-model, tokenizer, config = get_pretrained_ntv3_model(
-    model_name="NTv3_100M_pre",
-    embeddings_layers_to_save=(10,),
-)
-
-# Get data and tokenize it
-sequences = ["ATTCCGATTCCGATTCCG", "ATTTCTCTCTCTCTCTGAGATCGATCGATCGAT"]
-tokens = tokenizer.batch_np_tokenize(sequences)
-
-# Infer
-outs = model(tokens)
-
-# Get embeddings at layer 10
-print(outs["embeddings_10"].shape)
+```bash
+python -m nucleotide_transformer_v3.check_release pretrained NTv3_pretrained
+python -m nucleotide_transformer_v3.check_release tracks NTv3_tracks
+python -m nucleotide_transformer_v3.check_release tracks NTv3_tracks_1mb
+python -m nucleotide_transformer_v3.check_release annotation NTv3_annot_mammals
 ```
 
-### Post-trained Models
+It fails on a relative error above `--tolerance` (1e-4), on any argmax
+disagreement for the pretrained and annotation models, and, for tracks, when
+switching the species from human to mouse changes the tracks by less than
+1e-3 of their scale.
 
-Post-trained models require species conditioning and can predict functional tracks and genome annotations:
+Measured on CPU in float32:
 
-```python
-import jax.numpy as jnp
-from nucleotide_transformer_v3.pretrained import get_posttrained_ntv3_model
+| | Variables (params + batch stats) | Max abs. error | Relative to output scale | |
+| --- | --- | --- | --- | --- |
+| `NTv3_pretrained` | 504 | 26.75 | 1.2e-05 | argmax agreement 100% |
+| `NTv3_tracks` | 515 | 7.4e-06 | 2.4e-06 | human vs mouse differ by 73% of the scale |
+| `NTv3_tracks_1mb` | 515 | 7.2e-06 | 2.3e-06 | human vs mouse differ by 72% of the scale |
+| `NTv3_annot_mammals` | 508 | 2.1e-05 | | argmax agreement 100% |
 
-# Get post-trained model
-posttrained_model, tokenizer, config = get_posttrained_ntv3_model(
-    model_name="NTv3_100M_post",
-)
+The pretrained absolute error is large because the fixture's probe is random
+sequence, which drives the logits to ~2e6; relative to that scale it is float32
+noise. On real sequence (8,192 bp of hg38 chr19, 15% masked), the pretrained
+model recovers 60% of the masked bases.
 
-# Get data and tokenize it - 2 sequences of length 2**15 (32768 nucleotides)
-seq_length = 2**15  # 32768
-sequences = ["A" * seq_length, "T" * seq_length]  # 2 sequences
-tokens = tokenizer.batch_np_tokenize(sequences)
+## ⚖️ Known limitations
 
-# Get species token from conditions vocabulary
-species = 'human'
-species_tokens = posttrained_model.encode_species(species)
-
-# Infer - file_assembly_indices is computed internally from species condition
-outs = posttrained_model(
-    tokens=tokens,
-    species_tokens=species_tokens,
-)
-
-# Get predictions
-# NOTE: The post-trained model crops bigwig and bed track outputs to the middle 37.5%
-# of the sequence (Borzoi/AlphaGenome style), while MLM logits remain at full length.
-# For seq_length=32768: cropped_length = int(32768 * 0.375) = 12288
-
-logits = outs["logits"]  # Language model predictions (NOT cropped)
-# logits shape: (batch_size=2, token_seq_length, vocab_size)
-
-bigwig_logits = outs["bigwig_tracks_logits"]  # Functional track predictions (cropped)
-# bigwig_logits shape: (batch_size=2, cropped_token_seq_length, num_bigwig_tracks)
-
-bed_logits = outs["bed_tracks_logits"]  # Genome annotation predictions (cropped)
-# bed_logits shape: (batch_size=2, cropped_token_seq_length, num_bed_elements, 2)
-
-print(f"logits shape: {logits.shape}")  # Full sequence length
-print(f"bigwig_logits shape: {bigwig_logits.shape}")  # Cropped to middle 37.5%
-print(f"bed_logits shape: {bed_logits.shape}")  # Cropped to middle 37.5%
-```
-
-> [!TIP]
-> - You can also run our models and find more example code in [`../notebooks/nucleotide_transformer_v3/`](../notebooks/nucleotide_transformer_v3/).
-> - ⚡ The code runs both on **GPU and TPU** thanks to JAX!
-
-### Memory Optimization with bfloat16
-
-Both `get_pretrained_ntv3_model()` and `get_posttrained_ntv3_model()` support a `use_bfloat16` parameter to reduce memory usage:
-
-```python
-# Use bfloat16 precision for reduced memory usage
-model, tokenizer, config = get_pretrained_ntv3_model(
-    model_name="NTv3_100M_pre",
-    use_bfloat16=True,  # Enable bfloat16 precision
-)
-```
-
-> [!NOTE]
-> For memory considerations, the NTv3 family was trained with all compute and parameter dtypes set to bfloat16. You can choose to enable or disable bfloat16 precision during inference via the `use_bfloat16` parameter. We observe only very small differences in inference results between bfloat16 and full precision modes.
-> 
-> See [`set_bfloat16_dtypes()`](../nucleotide_transformer_v3/pretrained.py#L416) for the complete list of parameters that are set to bfloat16.
-
-
-## 📏 Sequence Length Requirements
-
-> [!WARNING]
-> Due to the U-Net architecture which uses downsampling and upsampling layers, sequence lengths must be divisible by 2^num_downsamples. For the main models, this is **128 for 7 downsamples**.
->
-> If your sequences don't meet this requirement, you can crop them to the nearest valid length, or pad them with `N` tokens to the nearest valid length. **The models however were not trained on [PAD] tokens**, so you should not pad them with [PAD] tokens.
+- **The tracks fixture does not exercise the species conditioning.** It was
+  generated with the condition masked out, so it pins the unconditioned path
+  only. `check_release` therefore also fails when human and mouse conditioning
+  give the same tracks, which shows the conditioning reaches the head but not
+  that each id is the right one.
+- **Compute runs in bfloat16 by default**, parameters staying float32. Pass
+  `use_bf16_compute=False` for float32 everywhere. The bigwig head keeps float32
+  compute either way.
+- **Memory at 1 Mb has not been measured here.** A 131,072 bp forward pass of
+  the tracks model with eight tracks takes about 30 s on a laptop CPU.
+- `attention_implementation` is `"xla"` in both configs. Setting it to
+  `"cudnn"` casts Q/K/V to bfloat16 inside attention, whatever
+  `use_bf16_compute` says.
 
 ---
 
 ## 🧪 NTv3 Benchmark
 
-We introduce **NTv3 Benchmark**, a new large-scale benchmark comprising **106 distinct tasks**, each formulated on natural long-range inputs (32 kb) with base-pair-resolution outputs. The benchmark:
+**NTv3 Benchmark** compares sequence-to-function models on **155 functional-track
+prediction tasks across 11 species**. Every model gets the same 32 kb input, the same
+task-specific 1 bp prediction head and the same per-nucleotide Poisson-multinomial loss,
+so what is compared is the representation rather than the training recipe.
 
-- ✅ Enables realistic genome-wide evaluation for both annotation and functional readouts
-- ✅ Spans a broad collection of new assays and new species
-- ✅ Is constructed under strict data-leakage controls relative to our post-training corpus
+- ✅ 11 species: human, cattle and rat; *A. thaliana*, rice, maize and tomato; *S. cerevisiae* and *S. pombe*; *P. falciparum* and *D. discoideum*
+- ✅ 7 assays: ATAC-seq, ChIP-seq for histone marks and TF binding, PRO-cap, eCLIP, RNA-seq and Ribo-seq
+- ✅ Two kinds of generalization: held-out assays in species NTv3-tracks saw, and seven genomes absent from post-training entirely
+- ✅ Constructed under strict data-leakage controls relative to the post-training corpus
 
-**NTv3 Benchmark** provides a standardized framework for assessing cross-assay and cross-species generalization at scale.
-
-### 🚀 [Try NTv3 Benchmark on Hugging Face](https://huggingface.co/spaces/InstaDeepAI/ntv3_benchmark)
+### 🚀 [Try NTv3 Benchmark on Hugging Face](https://huggingface.co/spaces/InstaDeepAI/ntv3_benchmark_revised)
 
 <p align="center">
-  <img src="../imgs/ntv3_benchmark.png" alt="NTv3 Benchmark Demo" width="800">
+  <img src="../imgs/ntv3_benchmark.png" alt="NTv3 Benchmark: every model on every species" width="850">
 </p>
+
+<p align="center"><em><strong>Every model on every species.</strong> Mean Pearson correlation on the held-out test set, one point per model and species, over the 11 benchmark species grouped by clade. A model with no point on a species was not evaluated on it. NTv3 (blue diamond) leads on most species, with AlphaGenome closest on the mammals.</em></p>
 
 ---
 
@@ -286,6 +419,24 @@ We introduce **NTv3 Benchmark**, a new large-scale benchmark comprising **106 di
   title={A foundational model for joint sequence-function multi-species modeling at scale for long-range genomic prediction},
   author={Boshar, Sam and Evans, Benjamin and Tang, Ziqi and Picard, Armand and Adel, Yanis and Lorbeer, Franziska K. and Rajesh, Chandana and Karch, Tristan and Sidbon, Shawn and Emms, David and Mendoza-Revilla, Javier and Al-Ani, Fatimah and Seitz, Evan and Schiff, Yair and Bornachot, Yohan and Hernandez, Ariana and Lopez, Marie and Laterre, Alexandre and Beguir, Karim and Koo, Peter and Kuleshov, Volodymyr and Stark, Alexander and de Almeida, Bernardo P. and Pierrot, Thomas},
   journal={bioRxiv},
-  year={2025}
+  year={2025},
+  url={https://www.biorxiv.org/content/10.64898/2025.12.22.695963}
 }
 ```
+
+---
+
+## 🕰️ The initial release (2025)
+
+This page documents the current models. The initial release is described by
+[version 1 of the preprint](https://www.biorxiv.org/content/10.64898/2025.12.22.695963v1),
+and those checkpoints are unchanged and still published. Nothing has been withdrawn.
+
+| Where | What |
+| --- | --- |
+| 🤗 Weights | The `NTv3_*_pre` and `NTv3_*_post` repositories, for example [`NTv3_650M_pre`](https://huggingface.co/InstaDeepAI/NTv3_650M_pre) and [`NTv3_650M_post`](https://huggingface.co/InstaDeepAI/NTv3_650M_post), each tagged `v1.0` so a pinned `revision=` keeps working |
+| 🚀 Notebooks and walkthrough | The **Initial release (2025)** tab of the [NTv3 Space](https://huggingface.co/spaces/InstaDeepAI/ntv3) |
+| 💻 Code | Commit [`2dc37b8`](https://github.com/instadeepai/nucleotide-transformer/tree/2dc37b86e16a6970fbc731751f7719d9f676f7f9), as described in the note under [📦 Models](#-models) |
+
+Those checkpoints use a different architecture, which `main` no longer supports, so
+install that commit in a separate environment.

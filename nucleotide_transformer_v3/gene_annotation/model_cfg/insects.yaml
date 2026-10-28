@@ -1,0 +1,77 @@
+# NTv3 genome annotation, insects.
+#
+# The third clade, on the same recipe as mammals.yaml and plants.yaml: same
+# backbone, same 1 Mb window, same annotation-only post-training. Every field
+# below was read back from the model's own saved config on 2026-09-22.
+
+description: >-
+  Insect gene structure. NTv3 703M length-extended to 1 Mb, post-trained on 93
+  insect assemblies with a 15-state annotation head.
+
+# The released model these weights are an export of. Checked against the
+# export's own provenance.source_model_name at load, because weights_uri
+# names a DIRECTORY the user chose: staging the plant export into a folder
+# called mammals would otherwise annotate a mammal genome with the plant
+# model and report success. Nothing else distinguishes the three -- they
+# share their 15 classes, their geometry and their conditioning.
+model_name: new_ntv3_700M_annotate_insecta_1mb
+
+# Where the converted weights live: a directory holding
+# hyperparameters.json + flax_model.msgpack + tokenizer_config.json.
+#
+# The released model, downloaded from InstaDeepAI/<name>/jax_model/ on the
+# Hub and cached, so this clade needs nothing staged. The repo is gated,
+# so it needs a Hugging Face login with approved access.
+#
+# Set NTV3_ANNOTATE_WEIGHTS_DIR to a directory of per-clade subdirectories
+# to load from disk instead -- it would read insects/ under it.
+weights_uri: NTv3_annot_insects
+
+# 1,048,576, the same as the other two clades, and NOT 131,072. The registry
+# docstring claimed 131,072 for the insect checkpoint until 2026-09-22; that
+# was inherited from an earlier 8M insect model and was never true of this one,
+# whose training config records sequence_length: 1048576. Annotating a 1 Mb
+# model at 131 kb does not raise, it just produces a worse GFF3, so the wrong
+# number here would have been invisible.
+sequence_length: 1048576
+
+# 0.75, as for the other clades. NOT the model's own trained crop, which its
+# training config records as 1.0. Inherited from the mammal sweep rather than
+# re-measured on insects: the crop is fixed pipeline-wide by
+# FIXED_KEEP_TARGET_CENTER_FRACTION, so this line is a declaration that must
+# agree with that constant, not a per-clade choice.
+keep_target_center_fraction: 0.75
+
+# The model's saved use_softmasked_vocab, same as the other two clades. Stage a
+# soft-masked assembly. The loader re-derives this from the serialized
+# tokenizer and cross-checks it against alphabet_size, so it configures nothing.
+softmasking: true
+
+# False, and for a stronger reason than in the other two clades: this model has
+# no species conditioning AT ALL. Its saved config records conditions_names: []
+# and conditions_vocab_size: [], where mammals and plants record a species
+# vocabulary that nothing reads. So there is no species embedding table here to
+# be unused, and no species_vocabulary below to list. (enable_trunk_conditioning
+# is true in the saved config, which looks alarming and is inert: with no
+# conditions, conditions_dims is empty and the trunk sees nothing.)
+#
+# This is a per-run config choice, not a property of the backbone: all three
+# clades warm-start from the same tracks checkpoint,
+# and its condition table is
+# resized to each run's own species panel rather than inherited -- to 36 for
+# mammals and 61 for plants, and not built at all here.
+#
+# The loader re-derives this and fails on disagreement.
+species_conditioned: false
+
+verified: true
+verified_on: "2026-09-22"
+
+notes: >-
+  Exported from step 762960 (~800B tokens). Selected on the held-out validation
+  species; the test species disagree and prefer 858330 by 0.43 gene F1, so this
+  pin follows the validate-then-report rule rather than the better test number.
+  Trained on 93 insect assemblies and validated on six held out. Unlike the
+  mammal and plant models this one takes no species input at all, so the
+  forward pass receives an empty conditions list; nothing about the call
+  changes for a user, since species was never consumed in any clade.

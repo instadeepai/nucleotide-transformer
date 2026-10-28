@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import jax
-from typing_extensions import TypeAlias
+from typing import TypeAlias
 
+import jax
+
+RNGKey: TypeAlias = jax.Array
 Embedding: TypeAlias = jax.Array
 Tokens: TypeAlias = jax.Array
 AttentionMask: TypeAlias = jax.Array
-SequenceMask: TypeAlias = jax.Array
-TransformerOutput: TypeAlias = dict[str, jax.Array]  # type: ignore
+TransformerOutput: TypeAlias = dict[str, jax.Array]

@@ -52,7 +52,7 @@ def download_mojo_ckpt() -> tuple[hk.Params, MOJOConfig]:
         repo_id=repo_id,
         filename="jax_params/config.json",
     )
-    with open(config_path) as f:
+    with open(config_path, "r") as f:
         config_dict = json.load(f)
     config = MOJOConfig(**config_dict)
 

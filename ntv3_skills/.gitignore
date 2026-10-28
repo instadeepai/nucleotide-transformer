@@ -1,0 +1,11 @@
+# Runtime + env isolation — never commit artifacts or envs
+results/
+.venv/
+__pycache__/
+*.pyc
+.env
+.cache/
+report/node_modules/
+report/dist/
+# HF model cache if pointed here
+hf_cache/

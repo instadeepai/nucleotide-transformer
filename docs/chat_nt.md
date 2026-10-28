@@ -6,7 +6,7 @@ across multiple biological tasks and modalities.
 
 * 📜 **[Read the Paper (Nature Machine Intelligence 2025)](https://www.biorxiv.org/content/10.1101/2024.04.30.591835v1)** 
 * 🤗 **[ChatNT on Hugging Face](https://huggingface.co/InstaDeepAI/ChatNT)**
-* 🚀 **[ChatNT Inference Notebook](../notebooks/chat_nt/inference.ipynb)**
+* 🚀 **[ChatNT Inference Notebook](./examples/inference_chatNT.ipynb)**
 
 <img src="../imgs/chatNT_figures.png" alt= "ChatNT and performance on downstream tasks" width="600">
 
@@ -22,7 +22,7 @@ an autoregressive fashion, using low‑temperature sampling to produce classific
 ## Training Data  
 ChatNT was instruction‑tuned on a unified corpus covering 27 diverse tasks from DNA, RNA and proteins, spanning multiple species, tissues and biological processes. 
 This amounted to 605 million DNA tokens (≈ 3.6 billion bases) and 273 million English tokens, sampled uniformly over tasks for 2 billion instruction tokens.
-Examples of questions and sequences for each task, as well as additional task information, can be found in [Datasets_overview.csv](https://huggingface.co/InstaDeepAI/ChatNT/blob/main/Datasets_overview.csv).
+Examples of questions and sequences for each task, as well as additional task information, can be found in [Datasets_overview.csv](Datasets_overview.csv).
 
 ## Tokenization  
 DNA inputs are broken into overlapping 6‑mer tokens and padded or truncated to 2048 tokens (~ 12 kb). English prompts and 
@@ -105,12 +105,14 @@ logits = outs["logits"]
 
 You can cite our model at:
 
-[ChatNT paper](https://www.nature.com/articles/s42256-025-01047-1)
+[ChatNT paper](https://www.biorxiv.org/content/10.1101/2024.04.30.591835v1)
 ```bibtex
-@article{dealmeida2024chatnt,
-  title={A multimodal conversational agent for dna, rna and protein tasks},
-  author={de Almeida, Bernardo P and Richard, Guillaume and Dalla-Torre, Hugo and Blum, Christopher and Hexemer, Lorenz and Pandey, Priyanka and Laurent, Stefan and others},
-  journal={Nature Machine Intelligence},
-  year={2025},
+@article{richard2024chatnt,
+  title={Chatnt: A multimodal conversational agent for dna, rna and protein tasks},
+  author={de Almeida, Bernardo P and Richard, Guillaume and Dalla-Torre, Hugo and Blum, Christopher and Hexemer, Lorenz and Pandey, Priyanka and Laurent, Stefan and Lopez, Marie and Laterre, Alexandre and Lang, Maren and others},
+  journal={bioRxiv},
+  pages={2024--04},
+  year={2024},
+  publisher={Cold Spring Harbor Laboratory}
 }
 ```

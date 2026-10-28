@@ -1,0 +1,169 @@
+# NTv3 genome annotation, plants.
+#
+# The direct twin of mammals.yaml: same backbone, same 1 Mb window, same
+# annotation-only post-training recipe, a different clade. Every field below was
+# read back from the checkpoint's own saved training config on 2026-09-03.
+
+description: >-
+  Plant gene structure. NTv3 703M length-extended to 1 Mb, post-trained on 53
+  plant assemblies with a 15-state annotation head.
+
+# The released model these weights are an export of. Checked against the
+# export's own provenance.source_model_name at load, because weights_uri
+# names a DIRECTORY the user chose: staging the plant export into a folder
+# called mammals would otherwise annotate a mammal genome with the plant
+# model and report success. Nothing else distinguishes the three -- they
+# share their 15 classes, their geometry and their conditioning.
+model_name: new_ntv3_700M_annotate_plants_1mb
+
+# Where the converted weights live: a directory holding
+# hyperparameters.json + flax_model.msgpack + tokenizer_config.json.
+#
+# The released model, downloaded from InstaDeepAI/<name>/jax_model/ on the
+# Hub and cached, so this clade needs nothing staged. The repo is gated,
+# so it needs a Hugging Face login with approved access.
+#
+# Set NTV3_ANNOTATE_WEIGHTS_DIR to a directory of per-clade subdirectories
+# to load from disk instead -- it would read plants/ under it.
+weights_uri: NTv3_annot_plants
+
+sequence_length: 1048576
+
+# 0.75, and it is now MEASURED on plants rather than inherited from the mammal
+# sweep. Not the checkpoint's own trained crop, which its training config records
+# as 1.0. Mean gene F1 over the five held-out test species, whole genome,
+# hmm_constrained, checkpoint 286110:
+#
+#   ktcf 0.375   72.48
+#   ktcf 0.75    72.67   <-- the registered value, and the best of the three
+#   ktcf 1.0     72.35   (the trained crop)
+#
+# 0.75 wins on all five species individually, by a remarkably uniform +0.19 to
+# +0.35 over the trained 1.0. Small in absolute terms - the whole range spans
+# 0.32 F1 - but consistent in direction rather than noise-shaped.
+#
+# AN EARLIER VERSION OF THIS NOTE GOT THE REASONING WRONG, and the error is worth
+# keeping because it is easy to repeat: it argued that since 0.375 and 1.0 sat
+# 0.13 F1 apart, 0.75 "cannot fall outside it". That assumes the crop effect is
+# monotonic between the two endpoints. It is not. 0.75 is above BOTH, so
+# interpolating between measured crops is not sound and the intermediate value
+# had to be run. It has been.
+keep_target_center_fraction: 0.75
+
+softmasking: true
+
+# False, for exactly the reasons spelled out in mammals.yaml: the species
+# tokenizer and embedding table exist, but enable_trunk_conditioning,
+# condition_annotation_head and condition_bigwig_head are all false in the
+# saved config, so the species input cannot reach the annotation output.
+species_conditioned: false
+
+verified: true
+verified_on: "2026-09-22"
+
+# The species tokenizer's own standard_tokens, read from the checkpoint. As in
+# mammals.yaml this is the training-set roster, not an input menu: species is
+# not consumed, so there is nothing to pass. (Note the mixed convention if you
+# read it as a list of assemblies: most are latin binomials, a handful of major
+# crops are common names.)
+species_vocabulary:
+  - acorus_americanus
+  - aquilegia_coerulea
+  - agave_tequilana
+  - brassica_rapa
+  - beta_vulgaris
+  - coffea_arabica
+  - corylus_avellana
+  - chasmanthium_laxum
+  - cleome_violacea
+  - dioscorea_alata
+  - daucus_carota
+  - eucalyptus_grandis
+  - fragaria_vesca
+  - populus_trichocarpa
+  - cucumis_sativus
+  - rosa_chinensis
+  - vigna_angularis
+  - carya_illinoinensis
+  - pyrus_x_bretschneideri
+  - ricinus_communis
+  - brassica_napus
+  - rhodamnia_argentea
+  - citrus_sinensis
+  - cucumis_melo
+  - hevea_brasiliensis
+  - vitis_vinifera
+  - ziziphus_jujuba
+  - musa_acuminata_aaa_group
+  - malus_domestica
+  - hordeum_vulgare_subsp._vulgare
+  - mercurialis_annua
+  - phragmites_australis
+  - euphorbia_lathyris
+  - cotton
+  - soybean
+  - hydrocotyle_leucocephala
+  - wheat
+  - joinvillea_ascendens
+  - lindenbergia_philippensis
+  - lactuca_sativa
+  - manihot_esculenta
+  - myrothamnus_flabellifolia
+  - miscanthus_sinensis
+  - nicotiana_tabacum
+  - rice
+  - pharus_latifolius
+  - panicum_virgatum
+  - sorghum_bicolor
+  - setaria_viridis
+  - arabidopsis
+  - thinopyrum_intermedium
+  - typha_latifolia
+  - ulmus_americana
+  - yucca_filamentosa
+  - maize
+
+notes: >-
+  Step 286110 (300 B tokens) is now a SELECTED checkpoint, which is why this
+  entry moved off 381480. Ranking the six checkpoints of this run that carry a
+  whole-genome test evaluation by mean gene F1 over the five held-out plant test
+  species (hmm_constrained, the decoder production uses) puts 286110 first at
+  both evaluated crops: 68.14 at 100 B, 71.76 at 200 B, 72.35 at 300 B, then
+  71.52, 71.84 and 70.86 at 400, 500 and 600 B. The run peaked at 300 B and has
+  drifted since, so the previous pin - the latest evaluated step rather than the
+  best - was 0.83 gene F1 worse than what was already available. That note ended
+  by saying the run was still training, that a later checkpoint might beat this
+  one, and that re-pinning would then be a one-line change here. It was: see the
+  next paragraph.
+  RE-PINNED 2026-09-21, 286110 -> 877404 (920 B, the run's final checkpoint), which
+  is that anticipated one-line change. The run has since finished and three later
+  checkpoints were evaluated whole-genome at the registered crop: 667590 reads 72.45
+  mean gene F1, 858330 72.88 and 877404 73.20, against 286110's 72.67. So the drift
+  this note described reversed and the run ended above its 300 B peak. 877404 is also
+  the best of the ten checkpoints on the held-out VALIDATION species (76.42 mean gene
+  F1), so test and validation agree on it, which the previous pin could not claim -
+  it was selected on test alone.
+  ONE CAVEAT ON THE DELTA: the three new evaluations ran with bf16 compute where
+  286110's ran in fp32, which is worth about +0.17 gene F1 ON THE MAMMAL A/B. No
+  plant A/B has been run, so applying it here is a CROSS-CLADE TRANSFER and not a
+  plant measurement - roughly a third of the +0.53 rests on it. Read the split as
+  +0.35 of checkpoint and +0.17 of dtype if the transfer holds, and the whole
+  +0.53 as checkpoint-plus-dtype either way. The three new points are mutually
+  comparable, and 877404 is the best of them; closing the caveat is one paired
+  plant evaluation at 877404 in fp32.
+  For scale on the number: at the registered 0.75 crop the PREVIOUS pin read
+  72.67 mean gene F1, which is +5.65 over Tiberius angiosperms rescored in-house
+  on the same contigs with the same evaluator (67.02), ahead on all five species,
+  and now marginally ahead of the old-architecture 53-species 131 kb run (72.39)
+  that has been the plant model of record. Marginally: +0.28 is inside the range
+  the crop alone moves, so read it as level rather than as a win.
+  Those figures are longest-isoform on every side. The Tiberius preprint's plant
+  table uses any-isoform matching, worth +2.8 to +8.2 gene F1 on plants, and
+  their angiosperm model reads unmasked sequence where this one reads the
+  soft-masked vocabulary, so this number belongs next to our own rescoring of
+  their predictions and never next to their published plant table.
+  To annotate at a crop other than the registered one, use
+  scripts/ntv3_genome_annotation/annotate/, which exposes
+  keep_target_center_fraction and accepts any value up to the trained 1.0.
+  Dropping model_cfg does NOT unlock it: production refuses any crop but its
+  own on every path, by design, so that every number it emits is comparable.

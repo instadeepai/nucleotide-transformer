@@ -6,7 +6,9 @@ import jax
 import jax.numpy as jnp
 import jmp
 
-from nucleotide_transformer.layers import RotaryEmbeddingConfig, SelfAttentionBlock
+from nucleotide_transformer.layers import RotaryEmbeddingConfig
+from nucleotide_transformer.layers import SelfAttentionBlock
+from nucleotide_transformer.types import AttentionMask, Embedding, Tokens
 from nucleotide_transformer.mojo.config import MOJOConfig
 from nucleotide_transformer.mojo.layers import (
     ConvBlock,
@@ -14,7 +16,6 @@ from nucleotide_transformer.mojo.layers import (
     ResidualConvBlock,
     ResidualDeConvBlock,
 )
-from nucleotide_transformer.types import AttentionMask, Embedding, Tokens
 
 
 class MOJO(hk.Module):
@@ -62,6 +63,35 @@ class MOJO(hk.Module):
         return x
 
     @hk.transparent
+    def _conv_block(self, dim_in: int, dim_out: int) -> tuple[hk.Module, hk.Module]:
+        conv = ConvBlock(
+            dim=dim_in,
+            dim_out=dim_out,
+            kernel_size=5,
+        )
+        res_conv = ResidualConvBlock(
+            dim=dim_out,
+            dim_out=dim_out,
+            kernel_size=1,
+        )
+        return conv, res_conv
+
+    @hk.transparent
+    def _deconv_block(self, dim_in: int, dim_out: int) -> tuple[hk.Module, hk.Module]:
+        conv = DeConvBlock(
+            dim=dim_in,
+            dim_out=dim_out,
+            kernel_size=5,
+            stride=2,
+        )
+        res_conv = ResidualDeConvBlock(
+            dim=dim_out,
+            dim_out=dim_out,
+            kernel_size=1,
+        )
+        return conv, res_conv
+
+    @hk.transparent
     def conv_tower(self, x: jnp.ndarray) -> tuple[jnp.ndarray, list[jnp.ndarray]]:
         filter_list = copy.deepcopy(self._config.filter_list)
         residuals = []
@@ -103,6 +133,23 @@ class MOJO(hk.Module):
                 x = x + residuals
 
         return x
+
+    @hk.transparent
+    def _attention_block(self, layer_idx: int) -> SelfAttentionBlock:
+        return SelfAttentionBlock(  # type: ignore
+            num_heads=self._config.num_attention_heads,
+            embed_dim=self._config.embed_dim,
+            key_size=self._config.key_size,
+            ffn_embed_dim=self._config.ffn_embed_dim,
+            add_bias_kv=False,
+            add_bias_fnn=False,
+            ffn_activation_name="swish",
+            use_glu_in_ffn=True,
+            rotary_embedding_config=self._rotary_embedding_config,
+            layer_norm_eps=self._config.layer_norm_eps,
+            pre_layer_norm=True,
+            name=f"attention_layer_{layer_idx}",
+        )
 
     @hk.transparent
     def transformer_tower(
@@ -156,52 +203,6 @@ class MOJO(hk.Module):
             omic_embeddings[omic] = self._embedding_layers[omic](omic_tokens)
 
         return omic_embeddings
-
-    @hk.transparent
-    def _conv_block(self, dim_in: int, dim_out: int) -> tuple[hk.Module, hk.Module]:
-        conv = ConvBlock(
-            dim=dim_in,
-            dim_out=dim_out,
-            kernel_size=5,
-        )
-        res_conv = ResidualConvBlock(
-            dim=dim_out,
-            dim_out=dim_out,
-            kernel_size=1,
-        )
-        return conv, res_conv
-
-    @hk.transparent
-    def _deconv_block(self, dim_in: int, dim_out: int) -> tuple[hk.Module, hk.Module]:
-        conv = DeConvBlock(
-            dim=dim_in,
-            dim_out=dim_out,
-            kernel_size=5,
-            stride=2,
-        )
-        res_conv = ResidualDeConvBlock(
-            dim=dim_out,
-            dim_out=dim_out,
-            kernel_size=1,
-        )
-        return conv, res_conv
-
-    @hk.transparent
-    def _attention_block(self, layer_idx: int) -> SelfAttentionBlock:
-        return SelfAttentionBlock(  # type: ignore
-            num_heads=self._config.num_attention_heads,
-            embed_dim=self._config.embed_dim,
-            key_size=self._config.key_size,
-            ffn_embed_dim=self._config.ffn_embed_dim,
-            add_bias_kv=False,
-            add_bias_fnn=False,
-            ffn_activation_name="swish",
-            use_glu_in_ffn=True,
-            rotary_embedding_config=self._rotary_embedding_config,
-            layer_norm_eps=self._config.layer_norm_eps,
-            pre_layer_norm=True,
-            name=f"attention_layer_{layer_idx}",
-        )
 
     def __call__(
         self,

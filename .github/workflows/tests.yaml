@@ -1,0 +1,36 @@
+# The gene_annotation package ships a test suite; without a workflow it would never
+# run. It needs no accelerator, no weights and no network.
+#
+# Only the gene_annotation package's own dependencies are installed, not the repo's
+# (scanpy, cellxgene_census, transformers and the rest), and the package is
+# imported from the checkout rather than installed. That keeps the job fast and
+# makes it prove something worth proving: that this package really does run on
+# jax, flax, numpy, pyyaml and typing_extensions alone.
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          # The JAX stack comes from the same file setup.py reads, so a green
+          # run here is evidence about what `pip install .` gives.
+          pip install -r requirements-jax.txt
+          pip install "numpy>=1.23.5" "pyyaml>=6.0" "typing_extensions>=3.10.0" pytest
+          # Test-only genetic-code oracle; the import boundary keeps it out of the package.
+          pip install biopython
+      - name: Run the annotation tests
+        env:
+          JAX_PLATFORMS: cpu
+        run: python -m pytest tests/ -q

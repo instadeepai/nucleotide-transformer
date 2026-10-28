@@ -11,6 +11,7 @@ from nucleotide_transformer.bulk_rna_bert.config import BulkRNABertConfig
 from nucleotide_transformer.bulk_rna_bert.model import build_bulk_rna_bert_forward_fn
 from nucleotide_transformer.bulk_rna_bert.tokenizer import BinnedOmicTokenizer
 
+
 ENV_XDG_CACHE_HOME = "XDG_CACHE_HOME"
 DEFAULT_CACHE_DIR = "~/.cache"
 
@@ -52,7 +53,7 @@ def download_bulkrnabert_ckpt() -> tuple[hk.Params, BulkRNABertConfig]:
         repo_id=repo_id,
         filename="jax_params/config.json",
     )
-    with open(config_path) as f:
+    with open(config_path, "r") as f:
         config_dict = json.load(f)
     config = BulkRNABertConfig(**config_dict)
 
@@ -93,7 +94,7 @@ def get_pretrained_bulkrnabert_model(
     tokenizer = BinnedOmicTokenizer(
         n_expressions_bins=config.n_expressions_bins,
         use_max_normalization=config.use_max_normalization,
-        normalization_factor=config.normalization_factor,  # type: ignore
+        normalization_factor=config.normalization_factor,
         prepend_cls_token=False,
     )
 

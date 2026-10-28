@@ -7,7 +7,7 @@ BulkRNABert is a transformer-based, encoder-only foundation model designed for b
 
 ## Training data
 
-The model was pre-trained on a large dataset of bulk RNA-seq profiles from The Cancer Genome Atlas (TCGA) dataset.
+The model was pre-trained on a large dataset of bulk RNA-seq profiles from The Cancer Genome Atlas (TCGA) dataset. 
 The model takes as input sequences of 19062 gene expression. The gene ids that must be used and in which order they should appear in the sequence as provided in `../notebooks/data/bulkrnabert_gene_ids.txt`
 
 

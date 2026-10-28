@@ -24,9 +24,14 @@ class BinnedOmicTokenizer:
         self._normalization_factor = normalization_factor
         self._prepend_cls_token = prepend_cls_token
 
-        self._gene_expression_bins = np.linspace(
-            min_omic_value, max_omic_value, self._n_expressions_bins
-        )
+        if self._use_max_normalization:
+            self._gene_expression_bins = np.linspace(
+                min_omic_value, max_omic_value, self._n_expressions_bins
+            )
+        else:
+            self._gene_expression_bins = np.linspace(
+                min_omic_value, max_omic_value, self._n_expressions_bins
+            )
 
         self._fixed_sequence_length = fixed_sequence_length
         self._unpadded_length = unpadded_length

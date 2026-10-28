@@ -38,13 +38,45 @@ This section highlights the key models and research directions from our team. Ea
 
 ### 🧬 The Nucleotide Transformer v3 (NTv3)
 
-A unified multi-species foundation model that integrates representation learning, functional-track and genome-annotation prediction, and controllable sequence generation within a single efficient framework. NTv3 uses a U-Net-like architecture with single-base tokenization to enable efficient modeling of contexts up to 1 Mb at nucleotide resolution. Pretrained on 9 trillion base pairs from OpenGenome2 and post-trained on > 16,000 functional tracks from 24 animal and plant species, NTv3 achieves state-of-the-art accuracy for functional-track prediction and genome annotation across species. The model can be fine-tuned into a controllable generative model for designing enhancer sequences with specified activity levels, validated experimentally via STARR-seq.
+A unified multi-species foundation model that brings representation learning, functional-track prediction, genome annotation and controllable sequence generation into one framework. NTv3 uses a U-Net-like architecture with single-base tokenization to model contexts up to 1 Mb at nucleotide resolution. It is pretrained on 9 trillion base pairs from OpenGenome2, then post-trained on 16,262 functional tracks from 15 animal and plant species, and reaches state-of-the-art accuracy for functional-track prediction and genome annotation across species. It can be fine-tuned into a controllable generative model for designing enhancer sequences at a requested activity level, validated experimentally by STARR-seq.
+
+One 700M-parameter backbone is trained once and then specialised per capability, so each checkpoint inherits what the others learned about sequence rather than starting over.
+
+| Checkpoint | Use it for |
+| --- | --- |
+| [`NTv3_pretrained`](https://huggingface.co/InstaDeepAI/NTv3_pretrained) | Embeddings, masked-token prediction, and your own fine-tuning |
+| [`NTv3_tracks`](https://huggingface.co/InstaDeepAI/NTv3_tracks) | Functional signal: accessibility, histone marks, TF binding, expression, from 16 kb to 1 Mb inputs |
+| [`NTv3_tracks_1mb`](https://huggingface.co/InstaDeepAI/NTv3_tracks_1mb) | The same tracks from 1 Mb inputs only: the specialist behind the NTv3 paper's main results |
+| [`NTv3_annot_mammals`](https://huggingface.co/InstaDeepAI/NTv3_annot_mammals) / [`_plants`](https://huggingface.co/InstaDeepAI/NTv3_annot_plants) / [`_insects`](https://huggingface.co/InstaDeepAI/NTv3_annot_insects) | Calling genes from sequence alone, one model per clade |
+
+Annotate a genome end to end with NTv3, FASTA --> GFF3:
+
+```bash
+pip install "nucleotide-transformer[gpu]"
+ntv3-annotate --genome /data/cow/genome.fa --model_cfg mammals --out /data/cow.gff3.gz
+```
 
 * **Keywords:** Multi-species Foundation Model, Long-context (1 Mb), Single-base Resolution, Functional-track Prediction, Genome Annotation, Controllable Sequence Generation, U-Net Architecture, Masked Diffusion
-* ➡️ **[Model Details & Usage](./docs/nucleotide_transformer_v3.md)** 
-* 📜 **[Read the Paper (bioRxiv)](https://www.biorxiv.org/content/10.64898/2025.12.22.695963v1)**
-* 🤗 **[Hugging Face Collection](https://huggingface.co/spaces/InstaDeepAI/ntv3)**
+* ➡️ **[Model Details & Usage](./docs/nucleotide_transformer_v3.md)**
+* 🧬 **[Genome Annotation](./docs/ntv3_genome_annotation.md)**, annotate a genome from FASTA to GFF3 with `ntv3-annotate`
+* 🤗 **[NTv3 collection on Hugging Face](https://huggingface.co/collections/InstaDeepAI/ntv3)**
+* 📜 **[Paper](https://www.biorxiv.org/content/10.64898/2025.12.22.695963)**
 
+#### NTv3 locus-analysis skill
+
+The NTv3 skill runs NTv3 inside [Claude Code](https://code.claude.com/docs) on a genomic locus you name. You ask in one sentence. The skill asks only for what is missing, shows one plan, and runs nothing until you approve it. The result is one self-contained report page, `results/<run>/ntv3_report.html`, with the predicted tracks in a genome browser.
+
+It answers five asks:
+
+* **Predict**: the tracks you name, at a gene or an exact region, from `NTv3_tracks` at any window up to 1,048,576 bp, on a GPU when there is one (on CPU, 16,384 bp or more is slow and comes with a warning). The model predicts the central 37.5% of the window. A gene is centred on its transcription start site. Only the requested model heads are computed.
+* **Saliency**: for each track, the gradient of its mean over the predicted span at each base, centred across A, C, G and T and kept at the reference base.
+* **Compare**: one SNV, the tracks for each allele, and how far each moves (alt − ref).
+* **Annotate**: a FASTA, or the 1 Mb around a Predict run, with a clade (`mammals`, `plants`, `insects`): the model (`InstaDeepAI/NTv3_annot_<clade>`), decoder (`hmm_constrained` by default), 1,048,576 bp windows with the central 75% kept, and the released filters. After approval it runs `ntv3-annotate`'s pipeline on a GPU (about 25 GB per window) and writes a GFF3 the browser draws, next to the tracks for a locus.
+* **Explain**: which model, species, window, crop, bins, and model head produced each number.
+
+Browser lanes are only the ones you name: GENCODE (`knownGene`) and ClinVar (`clinvarMain`) on human, NCBI RefSeq (`ncbiRefSeq`) on mouse, or none. Another UCSC lane, such as ENCODE cCREs, DNase clusters, phastCons, or a histone mark, is added only when you name it. Naming a tissue or an assay adds no lane. Integrated Gradients, SmoothGrad, ISM, design, knockout, and attention are not offered.
+
+Start here: [`ntv3_skills/README.md`](./ntv3_skills/README.md) covers requirements, installation from zero, a first ask, the run outputs, and troubleshooting.
 
 
 ---
@@ -90,7 +122,7 @@ A multimodal conversational agent designed with a deep understanding of DNA biol
 
 * **Keywords:** Conversational AI, Multimodal, DNA Analysis, Genomics Chatbot, Interactive Biology
 * ➡️ **[Model Details & Usage](./docs/chat_nt.md)**
-* 📜 **[Read the Paper (Nature Machine Intelligence 2025)](https://www.nature.com/articles/s42256-025-01047-1)**
+* 📜 **[Read the Paper (Nature Machine Intelligence 2025)](https://www.nature.com/articles/s42256-025-01047-1)** 
 * 🤗 **[ChatNT on Hugging Face](https://huggingface.co/InstaDeepAI/ChatNT)**
 * 🚀 **[ChatNT Inference Notebook (Jax)](./notebooks/chat_nt/inference.ipynb)**
 
@@ -115,7 +147,6 @@ A model designed for learning isoform-aware embeddings directly from RNA-seq dat
 * ➡️ **[Model Details & Usage](./docs/isoformer.md)**
 * 📜 **[Read the Paper (NeurIPS 2024)](https://papers.nips.cc/paper_files/paper/2024/file/8f6b3692297e49e5d5c91ba00281379c-Paper-Conference.pdf)**
 * 🤗 **[Hugging Face Link](https://huggingface.co/InstaDeepAI/isoformer)**
-* 🚀 **[Isoformer Inference Notebook (HF)](./notebooks/isoformer/inference.ipynb)**
 
 ---
 
@@ -153,8 +184,6 @@ MOJO is a multimodal model designed learn embeddings of multi-omics data. It int
 * 🤗 **[Hugging Face Link](https://huggingface.co/InstaDeepAI/MOJO)**
 * 🚀 **[MOJO Inference Notebook (HF)](./notebooks/mojo/inference_mojo_pytorch_example.ipynb)**
 
----
-
 ## 💡 Why Choose InstaDeep's Genomic Models?
 
 * **Built on Strong Foundations:** Leveraging large-scale pre-training and diverse genomic datasets.
@@ -182,7 +211,7 @@ To begin using models from this repository:
     ```bash
     pip install . # Installs the local package
     # Or, for a general requirements file if you have one:
-    # pip install -r requirements.txt
+    # pip install -r requirements.txt 
     ```
 
 For detailed instructions on individual models, including specific dependencies, downloading pre-trained weights, and Python usage examples, please refer to their dedicated documentation pages linked in the "Featured Models & Research Evolutions" section above (e.g., `./docs/nucleotide_transformer.md`).

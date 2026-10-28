@@ -1,0 +1,2 @@
+# setup.py reads this at build time, so an sdist that omitted it would not install.
+include requirements-jax.txt

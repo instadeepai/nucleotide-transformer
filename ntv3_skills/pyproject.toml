@@ -1,0 +1,36 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[dependency-groups]
+dev = [
+  "ruff>=0.16.5",
+  "ty>=0.0.76"
+]
+
+[project]
+# Planning, lookup, report generation, and quality checks run in this env.
+# Predict runs in the JAX Python `ntv3 doctor` finds: this repo's .venv.
+dependencies = [
+  "fast-logomaker>=0.1.0",
+  "matplotlib",
+  "memelite==0.4.0",
+  "numpy",
+  "pandas",
+  "pyyaml",
+  "requests",
+  "seaborn",
+  "tabulate",
+]
+description = "NTv3 skill CLI: plan, lookup, annotate, report, and critic."
+license = "CC-BY-NC-SA-4.0"
+name = "ntv3-tools"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+version = "0.1.0"
+
+[project.scripts]
+ntv3 = "ntv3_tools.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ntv3_tools"]

@@ -11,7 +11,7 @@ After post-training, NTv3 achieves **state-of-the-art accuracy** for functional-
 
 <p align="center">
   <strong>📜 <a href="https://www.biorxiv.org/content/10.64898/2025.12.22.695963">Read the Paper</a></strong> &nbsp;•&nbsp;
-  <strong>🚀 <a href="https://huggingface.co/spaces/InstaDeepAI/ntv3_revised">Hugging Face Space</a></strong> &nbsp;•&nbsp;
+  <strong>🚀 <a href="https://huggingface.co/spaces/InstaDeepAI/ntv3">Hugging Face Space</a></strong> &nbsp;•&nbsp;
   <strong>🗒️ <a href="../notebooks/nucleotide_transformer_v3">JAX Notebook Tutorials</a></strong> &nbsp;•&nbsp;
   <strong>🧪 <a href="#-ntv3-benchmark">NTv3 Benchmark</a></strong>
 </p>

@@ -1,0 +1,31 @@
+{
+  "name": "report",
+  "private": true,
+  "version": "0.0.0",
+  "license": "CC-BY-NC-SA-4.0",
+  "packageManager": "pnpm@9.15.9",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint src",
+    "test": "node --experimental-strip-types --test src/browser/*.test.ts",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@gmod/bbi": "^4.0.3",
+    "buffer": "^6.0.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "oxlint": "^1.75.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0"
+  }
+}

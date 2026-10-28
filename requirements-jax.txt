@@ -1,0 +1,18 @@
+# The JAX stack, pinned as one unit because its parts are coupled.
+#
+# flax 0.10.4's nnx.jit forwards `abstracted_axes` to jax.jit, which newer jax
+# removed. With an unbounded `jax>=0.5.3` next to an exact `flax==0.10.4`, pip
+# resolved jax 0.10.2 and every nnx.jit call raised
+# `TypeError: jit() got an unexpected keyword argument 'abstracted_axes'`:
+# 14 of 49 annotation tests failed in CI while passing locally on jax 0.5.3.
+#
+# setup.py and .github/workflows/tests.yaml both read this file, so the pins
+# they install cannot drift apart. Raise the ceiling only together with flax.
+#
+# These are the CPU wheels PyPI serves. A GPU needs the `gpu` extra, which
+# adds jax[cuda12] over the same bounds -- see setup.py. Without it JAX falls
+# back to the CPU on a machine that has a GPU, which for ntv3-annotate is the
+# difference between ~45 minutes and ~7.5 days for one genome.
+jax>=0.5.3,<0.6
+jaxlib>=0.5.3,<0.6
+flax==0.10.4

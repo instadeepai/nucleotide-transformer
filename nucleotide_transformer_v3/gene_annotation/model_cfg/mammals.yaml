@@ -1,0 +1,132 @@
+# NTv3 genome annotation, mammals.
+#
+# Every field below was read back from the checkpoint's own saved training
+# config on 2026-09-03, not copied from a call site, except
+# keep_target_center_fraction: see the note under it.
+
+description: >-
+  Mammalian gene structure. NTv3 703M length-extended to 1 Mb, post-trained on
+  28 mammal assemblies with a 15-state annotation head.
+
+# The released model these weights are an export of. Checked against the
+# export's own provenance.source_model_name at load, because weights_uri
+# names a DIRECTORY the user chose: staging the plant export into a folder
+# called mammals would otherwise annotate a mammal genome with the plant
+# model and report success. Nothing else distinguishes the three -- they
+# share their 15 classes, their geometry and their conditioning.
+model_name: new_ntv3_700M_annotate_mammals_1mb
+
+# Where the converted weights live: a directory holding
+# hyperparameters.json + flax_model.msgpack + tokenizer_config.json.
+#
+# The released model, downloaded from InstaDeepAI/<name>/jax_model/ on the
+# Hub and cached, so this clade needs nothing staged. The repo is gated,
+# so it needs a Hugging Face login with approved access.
+#
+# Set NTV3_ANNOTATE_WEIGHTS_DIR to a directory of per-clade subdirectories
+# to load from disk instead -- it would read mammals/ under it.
+weights_uri: NTv3_annot_mammals
+
+# Window geometry. Not optional detail: annotating at the wrong window produces
+# a plausible GFF3 rather than an error, which is why it travels with the
+# weights instead of being retyped at each call site.
+sequence_length: 1048576
+
+# 0.75, the validated annotation geometry, and deliberately NOT the
+# checkpoint's own trained crop, which its training config records as 1.0 and
+# the export keeps under provenance.trained_keep_target_center_fraction. This
+# is a declaration cross-checked against FIXED_KEEP_TARGET_CENTER_FRACTION, not
+# a per-clade choice and not a default that a checkpoint could override:
+# apply_model_config pins that constant on the no-model_cfg path too, and the
+# export already substitutes 0.75 into its own config.
+#
+# Was 0.375 until a whole-genome sweep measured the curve: 0.75 is 1.87x faster
+# with exon/gene F1 90.58 / 57.53 against 90.52 / 57.54, and keeps the >200kb
+# gene recall that motivates a 1 Mb context (41.47% against 41.82%, paired
+# p=0.50; Tiberius 32.01%). 1.0 regresses. See FIXED_KEEP_TARGET_CENTER_FRACTION.
+keep_target_center_fraction: 0.75
+
+# The checkpoint's saved use_softmasked_vocab. Lowercase repeat-masked bases
+# carry their own token ids, so stage a soft-masked assembly to get the
+# training-time representation. The loader re-derives this from the checkpoint
+# and cross-checks it against the model's alphabet_size, so this is here to tell
+# a user how to prepare their FASTA, not to configure anything.
+softmasking: true
+
+# False, and this is the field that was wrong first. The checkpoint DOES save
+# conditions_tokenizers: ['species'] and a species embedding table, which is
+# what the original `true` was derived from. But the same saved config sets
+# enable_trunk_conditioning, condition_annotation_head and
+# condition_bigwig_head ALL false (re-read from the checkpoint 2026-09-04), so
+# nothing that feeds the annotation output ever reads the species embedding:
+# its only consumer is the auxiliary species_logits head, which predicts
+# species from the trunk embedding and which annotation never looks at.
+# Declaring it conditioned made --species a required flag that could not change
+# a single base of the output. Every annotation config in the repo agrees, and
+# train/config.py says why: annotation-head conditioning "has not been
+# validated yet". The loader re-derives this from the checkpoint and fails on
+# disagreement, so this line cannot quietly go stale.
+species_conditioned: false
+
+verified: true
+verified_on: "2026-09-22"
+
+# The species tokenizer's own standard_tokens, read from the checkpoint. Not an
+# input menu: species is not consumed (see species_conditioned above), so
+# nothing here is passable or needs passing. It is kept because it is the one
+# place a user can see WHICH ORGANISMS THIS MODEL WAS TRAINED ON, which is the
+# real question behind "will it work on my genome" now that conditioning is not
+# the answer to it. Read from the checkpoint; the released export carries no
+# species tokenizer.
+species_vocabulary:
+  - horse
+  - dog
+  - kangaroo rat
+  - galago
+  - naked mole-rat
+  - degu
+  - star-nosed mole
+  - chinchilla
+  - white rhinoceros
+  - prairie vole
+  - walrus
+  - coquerel's sifaka
+  - alpine marmot
+  - capuchin
+  - hawaiian monk seal
+  - sea otter
+  - jerboa
+  - vampire bat
+  - leopard
+  - big brown bat
+  - african elephant
+  - night monkey
+  - pika
+  - guinea pig
+  - gray mouse lemur
+  - bactrian camel
+  - thirteen-lined ground squirrel
+  - shrew mouse
+  - human
+  - mouse
+
+notes: >-
+  Step 925089 (970 B tokens, the run's final checkpoint) is
+  validation-selected. Trained on 28 mammal assemblies and validated on two
+  held out (GCF_024362965.1, GCF_900095145.1). The species vocabulary is
+  mammals only, so a non-mammal is out of distribution however it is
+  conditioned.
+  RE-PINNED 2026-09-21, 476850 -> 925089. The run finished and its whole
+  validation curve was swept at the registered crop; ranking the ten complete
+  checkpoints by mean gene F1 over the two validation mammals puts 925089 first
+  at 60.45 against 476850's 59.63. The previous pin was the peak of the curve as
+  it stood mid-run, and the run ended above it after a 400 B plateau.
+  TEST AGREES, which is why the re-pin is unambiguous: scored whole-genome on
+  cow and whale at the registered crop, 925089 reads 56.36 mean gene F1 against
+  476850's 55.01, 667590's 54.90 and 858330's 54.26 - the same order the
+  validation curve gives. Both species improve (cow 57.2 -> 58.4, whale 52.8 ->
+  54.3).
+  ONE CAVEAT ON THE DELTA: the three new evaluations ran with bf16 compute where
+  476850's ran in fp32, worth about +0.17 gene F1 on the mammal A/B. Read the
+  +1.35 as roughly +1.18 of checkpoint and +0.17 of dtype. The three new points
+  are mutually comparable.

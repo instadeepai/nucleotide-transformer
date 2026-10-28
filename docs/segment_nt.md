@@ -203,7 +203,7 @@ print(f"Intron probabilities shape: {probabilities_intron.shape}")
 You can cite our models at:
 
 ```bibtex
-﻿@Article{deAlmeida2025segmentNT,
+@Article{deAlmeida2025segmentNT,
 title={Annotating the genome at single-nucleotide resolution with DNA foundation models},
 author={de Almeida, Bernardo P. and Dalla-Torre, Hugo and Richard, Guillaume and Blum, Christopher and Hexemer, Lorenz and G{\'e}lard, Maxence and Mendoza-Revilla, 
 Javier and Tang, Ziqi and Marin, Frederikke I. and Emms, David M. and Pandey, Priyanka and Laurent, Stefan and Lopez, Marie and Laterre, Alexandre and Lang, Maren

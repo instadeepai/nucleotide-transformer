@@ -1,7 +1,21 @@
+# Copyright 2022 InstaDeep Ltd
+#
+# Licensed under the Creative Commons BY-NC-SA 4.0 License (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://creativecommons.org/licenses/by-nc-sa/4.0/
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import inspect
 import re
 from abc import ABC, abstractmethod
-from typing import Any, Type
+from typing import Any, ClassVar, Type
 
 import numpy as np
 
@@ -689,9 +703,17 @@ class StandardTokenizer(BaseTokenizer):
         return f'{len(new_tokens)} new tokens added : {", ".join(new_tokens)}'
 
 class NucleotideTokenizer(StandardTokenizer):
+    """Fast version of the 1 k-mer tokenizer used for the NTv3 models.
+
+    When ``include_softmasked_tokens=True``, lowercase ``a/t/c/g/n`` are appended
+    to ``standard_tokens`` as distinct tokens (RepeatMasker soft-mask convention).
+    The lowercase ids land *after* the existing uppercase ids, so ids 0..10 keep
+    their meaning and the 5 new rows (ids 11..15 in the default special-token
+    layout) carry the soft-mask signal. The annotation checkpoints were trained
+    with this vocabulary and will not load against the 11-token one.
     """
-    Fast version of the 1 k-mer tokenizer that is used for the long_range_nt models.
-    """
+
+    SOFTMASKED_NUCLEOTIDES: ClassVar[list[str]] = ["a", "t", "c", "g", "n"]
 
     def __init__(
         self,
@@ -708,10 +730,15 @@ class NucleotideTokenizer(StandardTokenizer):
             list[str] | None
         ) = None,  # Additional special tokens for consistent serialization
         tokens_to_ids: dict[str, int] | None = None,
+        include_softmasked_tokens: bool = False,
     ):
+        standard_tokens = ["A", "T", "C", "G", "N"]
+        if include_softmasked_tokens:
+            standard_tokens = standard_tokens + self.SOFTMASKED_NUCLEOTIDES
+        self._include_softmasked_tokens = include_softmasked_tokens
         StandardTokenizer.__init__(
             self,
-            standard_tokens=["A", "T", "C", "G", "N"],
+            standard_tokens=standard_tokens,
             unk_token=unk_token,
             pad_token=pad_token,
             mask_token=mask_token,
@@ -724,6 +751,10 @@ class NucleotideTokenizer(StandardTokenizer):
             extra_special_tokens=extra_special_tokens,
             tokens_to_ids=tokens_to_ids,
         )
+
+    @property
+    def include_softmasked_tokens(self) -> bool:
+        return self._include_softmasked_tokens
 
     def np_tokenize(self, sequence: str, validate_input: bool = False) -> np.array:
         """
@@ -879,9 +910,15 @@ class NucleotideTokenizer(StandardTokenizer):
         return ["".join(row) for row in string_tokens]
 
 
-def get_ntv3_tokenizer() -> NucleotideTokenizer:
-    """
-    Returns tokenizer for DNA sequences when using the NTv3 models.
+def get_ntv3_tokenizer(
+    include_softmasked_tokens: bool = False,
+) -> NucleotideTokenizer:
+    """Returns the tokenizer for DNA sequences when using the NTv3 models.
+
+    Args:
+        include_softmasked_tokens: When True, lowercase ``a/t/c/g/n`` become
+            distinct tokens, giving the 16-token vocabulary the annotation
+            checkpoints were trained with.
     """
     tokenizer = NucleotideTokenizer(
         unk_token="<unk>",
@@ -890,5 +927,6 @@ def get_ntv3_tokenizer() -> NucleotideTokenizer:
         prepend_bos_token=False,
         prepend_cls_token=False,
         append_eos_token=False,
+        include_softmasked_tokens=include_softmasked_tokens,
     )
     return tokenizer

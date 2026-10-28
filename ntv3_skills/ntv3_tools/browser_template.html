@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NTv3 browser</title>
+<style>
+:root {
+  --bg: #ffffff; --fg: #1d2330; --muted: #5d6675; --line: #d9dde4;
+  --panel: #f5f7fa; --focus: rgba(46, 117, 182, 0.10); --accent: #2e75b6;
+  --gene: #1f4e79; --feature: #7a4fa3; --signal: #2e75b6; --measured: #8a8f99;
+  --annot: #c0392b; --saliency: #b8860b; --delta: #c2185b; --mark: #d35400;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15181e; --fg: #e6e9ef; --muted: #9aa3b2; --line: #2f3540;
+    --panel: #1d2128; --focus: rgba(91, 155, 213, 0.16); --accent: #7fb3e6;
+    --gene: #9cc3ea; --feature: #c4a3e6; --signal: #7fb3e6; --measured: #8a909b;
+    --annot: #f08a7e; --saliency: #e0b84c; --delta: #f48fb1; --mark: #f5a25d;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); overflow-x: hidden; }
+body { font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 1.25rem; margin: 0 0 2px; }
+h2 { font-size: 1rem; margin: 24px 0 8px; }
+.sub { color: var(--muted); margin: 0 0 12px; overflow-wrap: anywhere; }
+.bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 12px; }
+.bar button { font: inherit; padding: 4px 12px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--fg); border-radius: 6px; cursor: pointer; }
+.bar span { color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
+.lane { border-top: 1px solid var(--line); padding: 6px 0 4px; }
+.lane-head { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+.lane-head b { font-weight: 600; overflow-wrap: anywhere; }
+.lane-head i { color: var(--muted); font-style: normal; white-space: nowrap; margin-left: auto; }
+.lane-head input { width: 22px; height: 18px; padding: 0; border: 0; background: none; cursor: pointer; }
+.lane svg { display: block; width: 100%; touch-action: pan-y; cursor: grab; }
+.empty { color: var(--muted); font-size: 0.85rem; padding: 4px 0 6px; }
+.note { background: var(--panel); border-radius: 8px; padding: 10px 12px; margin: 12px 0;
+  color: var(--muted); font-size: 0.9rem; }
+.note p { margin: 4px 0; }
+dl { display: grid; grid-template-columns: minmax(90px, max-content) 1fr; gap: 4px 12px; margin: 0; }
+dt { color: var(--muted); }
+dd { margin: 0; overflow-wrap: anywhere; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">NTv3 browser</h1>
+  <p class="sub" id="subtitle"></p>
+  <div class="bar" id="controls" hidden>
+    <button type="button" data-act="left" aria-label="Pan left">&larr;</button>
+    <button type="button" data-act="right" aria-label="Pan right">&rarr;</button>
+    <button type="button" data-act="in" aria-label="Zoom in">+</button>
+    <button type="button" data-act="out" aria-label="Zoom out">&minus;</button>
+    <button type="button" data-act="reset">Back to locus</button>
+    <span id="view"></span>
+  </div>
+  <div id="lanes"></div>
+  <div class="note" id="notes"></div>
+  <section id="explain" hidden><h2>Explain</h2><dl id="explain-list"></dl></section>
+  <section id="compare" hidden><h2>Compare</h2><p class="sub" id="compare-sub"></p>
+    <div class="scroll"><table id="compare-table"></table></div></section>
+</main>
+<script type="application/json" id="ntv3-run">null</script>
+<script>
+(function () {
+  "use strict";
+  var DEFAULT_LANES = ["GENCODE", "ClinVar", "ENCODE cCREs", "DNase clusters", "phastCons"];
+  var run = JSON.parse(document.getElementById("ntv3-run").textContent);
+  var $ = function (id) { return document.getElementById(id); };
+  var NS = "http://www.w3.org/2000/svg";
+  var KIND_COLORS = { genes: "gene", features: "feature", signal: "signal" };
+  var css = getComputedStyle(document.documentElement);
+
+  function el(tag, attrs, text) {
+    var node = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) { node.setAttribute(k, attrs[k]); });
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+  function svgEl(tag, attrs, title) {
+    var node = document.createElementNS(NS, tag);
+    Object.keys(attrs).forEach(function (k) {
+      // Colors are CSS variables, which only style properties resolve.
+      if (k === "fill" || k === "stroke") node.style[k] = attrs[k];
+      else node.setAttribute(k, attrs[k]);
+    });
+    if (title) { var t = document.createElementNS(NS, "title"); t.textContent = title; node.appendChild(t); }
+    return node;
+  }
+  function fmt(n) { return Math.round(n).toLocaleString("en-US"); }
+  function notes(lines) {
+    var box = $("notes");
+    box.textContent = "";
+    lines.forEach(function (line) { box.appendChild(el("p", {}, line)); });
+    box.hidden = !lines.length;
+  }
+
+  if (!run) {
+    $("subtitle").textContent = "No run loaded. A run fills these lanes at its locus.";
+    DEFAULT_LANES.forEach(function (label) {
+      var lane = el("div", { "class": "lane" });
+      var head = el("div", { "class": "lane-head" });
+      head.appendChild(el("b", {}, label));
+      head.appendChild(el("i", {}, "UCSC"));
+      lane.appendChild(head);
+      lane.appendChild(el("div", { "class": "empty" }, "Fetched by lookup for the run's window."));
+      $("lanes").appendChild(lane);
+    });
+    notes([
+      "Predicted tracks appear when a run has them.",
+      "An NTv3 annotation lane appears when the run has a GFF3.",
+      "Histone marks are added only when the question names that cell."
+    ]);
+    return;
+  }
+
+  var home = [run.view.start, run.view.end];
+  var view = home.slice();
+  var minSpan = 50;
+
+  $("title").textContent = run.title;
+  $("subtitle").textContent = run.subtitle;
+  $("controls").hidden = false;
+  notes(run.notes || []);
+
+  function x(pos, width) { return (pos - view[0]) / (view[1] - view[0]) * width; }
+
+  function drawLane(lane, width) {
+    var height = lane.kind === "signal" ? 48 : (lane.kind === "genes" ? 30 : 18);
+    var svg = svgEl("svg", { viewBox: "0 0 " + width + " " + height, height: height, role: "img",
+      "aria-label": lane.label });
+    if (run.focus) {
+      var f0 = Math.max(0, x(run.focus[0], width)), f1 = Math.min(width, x(run.focus[1], width));
+      if (f1 > f0) svg.appendChild(svgEl("rect", { x: f0, y: 0, width: f1 - f0, height: height, fill: "var(--focus)" }));
+    }
+    var color = lane.override || "var(--" + (lane.color || KIND_COLORS[lane.kind]) + ")";
+    var items = lane.items || [];
+    if (lane.kind === "signal") {
+      var max = lane.max || 1, min = Math.min(0, lane.min || 0), span = (max - min) || 1;
+      var zero = height - 2 - (0 - min) / span * (height - 4);
+      items.forEach(function (it) {
+        if (it[1] < view[0] || it[0] > view[1]) return;
+        var a = x(it[0], width), b = Math.max(a + 0.6, x(it[1], width));
+        var y = height - 2 - (it[2] - min) / span * (height - 4);
+        svg.appendChild(svgEl("rect", { x: a, y: Math.min(y, zero), width: b - a,
+          height: Math.max(0.6, Math.abs(zero - y)), fill: color }));
+      });
+    } else {
+      items.forEach(function (it) {
+        if (it.e < view[0] || it.s > view[1]) return;
+        var a = x(it.s, width), b = Math.max(a + 1, x(it.e, width));
+        var mid = height / 2, title = it.n || "";
+        var g = svgEl("g", {}, title + (it.d ? " " + it.d : "") + " " + fmt(it.s) + "-" + fmt(it.e));
+        if (lane.kind === "genes") {
+          g.appendChild(svgEl("line", { x1: a, x2: b, y1: mid, y2: mid, stroke: color, "stroke-width": 1 }));
+          (it.b || [[it.s, it.e]]).forEach(function (bl) {
+            var p = x(bl[0], width), q = Math.max(p + 1, x(bl[1], width));
+            g.appendChild(svgEl("rect", { x: p, y: mid - 6, width: q - p, height: 12, fill: color }));
+          });
+          if (it.d === "+" || it.d === "-") {
+            var tip = it.d === "+" ? Math.min(b, width) : Math.max(a, 0), dir = it.d === "+" ? -5 : 5;
+            g.appendChild(svgEl("path", { d: "M" + (tip + dir) + " " + (mid - 4) + "L" + tip + " " + mid +
+              "L" + (tip + dir) + " " + (mid + 4), fill: "none", stroke: color }));
+          }
+        } else {
+          g.appendChild(svgEl("rect", { x: a, y: 3, width: b - a, height: height - 6,
+            fill: lane.override || it.c || color }));
+        }
+        svg.appendChild(g);
+      });
+    }
+    (run.marks || []).forEach(function (mark) {
+      var m = x(mark.pos + 0.5, width);
+      if (m >= 0 && m <= width) {
+        svg.appendChild(svgEl("line", { x1: m, x2: m, y1: 0, y2: height, stroke: "var(--mark)",
+          "stroke-width": 1.5 }, mark.label));
+      }
+    });
+    return svg;
+  }
+
+  // Lane heads are built once so a color picker stays open while lanes redraw.
+  var bodies = run.lanes.map(function (lane) {
+    var node = el("div", { "class": "lane" });
+    var head = el("div", { "class": "lane-head" });
+    head.appendChild(el("b", {}, lane.label));
+    head.appendChild(el("i", {}, lane.source || ""));
+    var body = el("div", {});
+    if (lane.items && lane.items.length) {
+      var picker = el("input", { type: "color", "aria-label": "Color for " + lane.label,
+        value: css.getPropertyValue("--" + (lane.color || KIND_COLORS[lane.kind])).trim() || "#2e75b6" });
+      picker.addEventListener("input", function () { lane.override = picker.value; render(); });
+      head.appendChild(picker);
+    } else {
+      body.appendChild(el("div", { "class": "empty" }, lane.empty || "Nothing in this window."));
+    }
+    node.appendChild(head);
+    node.appendChild(body);
+    $("lanes").appendChild(node);
+    return body;
+  });
+
+  function render() {
+    var width = Math.max(200, $("lanes").clientWidth || 360);
+    $("view").textContent = run.chrom + ":" + fmt(view[0]) + "-" + fmt(view[1]) +
+      " (" + fmt(view[1] - view[0]) + " bp)";
+    run.lanes.forEach(function (lane, i) {
+      if (!lane.items || !lane.items.length) return;
+      bodies[i].textContent = "";
+      bodies[i].appendChild(drawLane(lane, width));
+    });
+  }
+
+  function setView(start, end) {
+    var span = Math.max(minSpan, end - start);
+    var lo = run.bounds[0], hi = run.bounds[1];
+    span = Math.min(span, hi - lo);
+    start = Math.max(lo, Math.min(start, hi - span));
+    view = [start, start + span];
+    render();
+  }
+
+  $("controls").addEventListener("click", function (event) {
+    var act = event.target.getAttribute("data-act");
+    var span = view[1] - view[0], mid = (view[0] + view[1]) / 2;
+    if (act === "left") setView(view[0] - span / 4, view[1] - span / 4);
+    if (act === "right") setView(view[0] + span / 4, view[1] + span / 4);
+    if (act === "in") setView(mid - span / 4, mid + span / 4);
+    if (act === "out") setView(mid - span, mid + span);
+    if (act === "reset") setView(home[0], home[1]);
+  });
+  document.addEventListener("keydown", function (event) {
+    var act = { ArrowLeft: "left", ArrowRight: "right" }[event.key];
+    if (act && event.target.tagName !== "INPUT") $("controls").querySelector('[data-act="' + act + '"]').click();
+  });
+
+  var drag = null;
+  $("lanes").addEventListener("pointerdown", function (event) {
+    if (!event.target.closest("svg")) return;
+    drag = { x: event.clientX, view: view.slice(), width: $("lanes").clientWidth };
+  });
+  window.addEventListener("pointermove", function (event) {
+    if (!drag) return;
+    var shift = (drag.x - event.clientX) / drag.width * (drag.view[1] - drag.view[0]);
+    setView(drag.view[0] + shift, drag.view[1] + shift);
+  });
+  window.addEventListener("pointerup", function () { drag = null; });
+  window.addEventListener("resize", render);
+
+  if (run.explain && run.explain.length) {
+    $("explain").hidden = false;
+    run.explain.forEach(function (row) {
+      $("explain-list").appendChild(el("dt", {}, row[0]));
+      $("explain-list").appendChild(el("dd", {}, row[1]));
+    });
+  }
+  if (run.compare) {
+    $("compare").hidden = false;
+    $("compare-sub").textContent = run.compare.summary;
+    var table = $("compare-table");
+    var headRow = el("tr", {});
+    ["Track", "Model head", "Alt − ref (largest)", "Percentile"].forEach(function (h) { headRow.appendChild(el("th", {}, h)); });
+    table.appendChild(headRow);
+    run.compare.rows.forEach(function (row) {
+      var tr = el("tr", {});
+      row.forEach(function (cell) { tr.appendChild(el("td", {}, cell)); });
+      table.appendChild(tr);
+    });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

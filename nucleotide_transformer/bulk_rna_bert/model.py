@@ -44,6 +44,35 @@ class BulkRNABert(hk.Module):
             alphabet_size=self._config.n_expressions_bins,
         )
 
+    def __call__(
+        self,
+        tokens: Tokens,
+        attention_mask: AttentionMask = None,
+    ) -> TransformerOutput:
+        batch_size, seq_len = tokens.shape
+        outs: dict[str, jnp.ndarray] = {}
+
+        x = self._expression_embedding_layer(tokens)
+        if self._config.use_gene_embedding:
+            gene_embedding = self._gene_embedding_layer(
+                jnp.arange(self._config.n_genes)
+            )
+            if self._config.project_gene_embedding:
+                gene_embedding = self._fc_gene_embedding(gene_embedding)
+            x = x + gene_embedding
+
+        if attention_mask is None:
+            attention_mask = jnp.ones((batch_size, 1, seq_len, seq_len))
+
+        x, outs = self.apply_attention_blocks(
+            x=x,
+            outs=outs,
+            attention_mask=attention_mask,
+        )
+        lm_head_outs = self._lm_head(x)
+        outs["logits"] = lm_head_outs["logits"]
+        return outs
+
     @hk.transparent
     def apply_attention_blocks(
         self,
@@ -100,35 +129,6 @@ class BulkRNABert(hk.Module):
             ffn_embed_dim=self._config.ffn_embed_dim,
             name=f"self_attention_block_{layer_idx}",
         )
-
-    def __call__(
-        self,
-        tokens: Tokens,
-        attention_mask: AttentionMask = None,
-    ) -> TransformerOutput:
-        batch_size, seq_len = tokens.shape
-        outs: dict[str, jnp.ndarray] = {}
-
-        x = self._expression_embedding_layer(tokens)
-        if self._config.use_gene_embedding:
-            gene_embedding = self._gene_embedding_layer(
-                jnp.arange(self._config.n_genes)
-            )
-            if self._config.project_gene_embedding:
-                gene_embedding = self._fc_gene_embedding(gene_embedding)
-            x = x + gene_embedding
-
-        if attention_mask is None:
-            attention_mask = jnp.ones((batch_size, 1, seq_len, seq_len))
-
-        x, outs = self.apply_attention_blocks(
-            x=x,
-            outs=outs,
-            attention_mask=attention_mask,
-        )
-        lm_head_outs = self._lm_head(x)
-        outs["logits"] = lm_head_outs["logits"]
-        return outs
 
 
 def build_bulk_rna_bert_forward_fn(

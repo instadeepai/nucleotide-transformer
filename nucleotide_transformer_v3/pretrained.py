@@ -12,543 +12,502 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Load a released NTv3 model from a directory of Flax artifacts.
+
+A model directory holds::
+
+    hyperparameters.json          the model config
+    flax_model.msgpack            the NNX variable state
+    tokenizer_config.json         the sequence tokenizer, optional
+    conditions_tokenizers.json    one tokenizer per discrete condition, required
+                                  iff the config declares conditions
+
+Nothing here reads Orbax, so the package needs neither ``orbax-checkpoint`` nor
+``tensorstore``. Every loader takes either such a directory or the name of a
+released model (``RELEASED_MODELS``), which is fetched from the Hugging Face Hub
+into the local cache. ``huggingface_hub`` is imported only then, so loading
+from a local directory needs nothing beyond the package's own dependencies.
+"""
+
+import dataclasses
+import json
+from pathlib import Path
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 import numpy as np
-from flax import nnx
-from transformers import AutoModel, AutoModelForMaskedLM
+from flax import nnx, serialization, traverse_util
+from flax.nnx import filterlib
 
-from nucleotide_transformer_v3.model import (
-    NTv3PreTrained,
-    NTv3PreTrainedConfig,
-    DiscreteConditionedNTv3PreTrainedConfig,
-    NTv3PostTrained,
-    NTv3PostTrainedConfig,
+from nucleotide_transformer_v3.config import NTv3Config
+from nucleotide_transformer_v3.dtypes import build_bf16_compute_model
+from nucleotide_transformer_v3.logging import get_logger
+from nucleotide_transformer_v3.model import NTv3
+from nucleotide_transformer_v3.tokenizers import (
+    BaseTokenizer,
+    NucleotideTokenizer,
+    get_ntv3_tokenizer,
 )
-from nucleotide_transformer_v3.layers import DeConvUpsampleType
-from nucleotide_transformer_v3.tokenizers import StandardTokenizer, get_ntv3_tokenizer, NucleotideTokenizer
+from nucleotide_transformer_v3.with_tracks_heads import (
+    DiscreteConditionedNTv3WithTracksHeads,
+    DiscreteConditionedNTv3WithTracksHeadsConfig,
+)
+
+logger = get_logger()
+
+CONFIG_FILE = "hyperparameters.json"
+WEIGHTS_FILE = "flax_model.msgpack"
+TOKENIZER_FILE = "tokenizer_config.json"
+CONDITIONS_TOKENIZERS_FILE = "conditions_tokenizers.json"
+
+# Released model name -> Hugging Face repository. The Flax artifacts live in the
+# repository's ARTIFACTS_SUBFOLDER, beside the PyTorch weights.
+RELEASED_MODELS: dict[str, str] = {
+    "NTv3_pretrained": "InstaDeepAI/NTv3_pretrained",
+    "NTv3_tracks": "InstaDeepAI/NTv3_tracks",
+    "NTv3_tracks_1mb": "InstaDeepAI/NTv3_tracks_1mb",
+    "NTv3_annot_mammals": "InstaDeepAI/NTv3_annot_mammals",
+    "NTv3_annot_plants": "InstaDeepAI/NTv3_annot_plants",
+    "NTv3_annot_insects": "InstaDeepAI/NTv3_annot_insects",
+}
+ARTIFACTS_SUBFOLDER = "jax_model"
+
+# Params alone would drop RMSBatchNorm.var_ema, which eval-mode normalization
+# divides by. The model would then run against a ones-init and be quietly wrong.
+VARIABLES = filterlib.Any(nnx.Param, nnx.BatchStat)
 
 
-SUPPORTED_PRETRAINED_MODEL_LIST = [
-    # Production models
-    "NTv3_8M_pre",
-    "NTv3_100M_pre",
-    "NTv3_650M_pre",
-    # 8kb context intermediate checkpoints
-    "NTv3_8M_pre_8kb",
-    "NTv3_100M_pre_8kb",
-    "NTv3_650M_pre_8kb",
-    # 5 downsample ablations
-    "NTv3_5downsample_pre",
-    "NTv3_5downsample_pre_8kb",
-]
+def parse_hyperparameters(
+    values: dict[str, Any],
+    config_class: type[NTv3Config] = DiscreteConditionedNTv3WithTracksHeadsConfig,
+) -> Any:
+    """Build a config dataclass from a hyperparameters dict.
 
-SUPPORTED_POSTTRAINED_MODEL_LIST = [
-    # Production models
-    "NTv3_100M_post",
-    "NTv3_650M_post",
-    # 131kb context checkpoints
-    "NTv3_100M_post_131kb",
-    "NTv3_650M_post_131kb",
-    # 5 downsample ablations
-    "NTv3_5downsample_post",
-    "NTv3_5downsample_post_131kb",
-]
-
-def parse_hf_config_to_ntv3_config(
-    config_dict: dict[str, Any],
-    tokenizer: NucleotideTokenizer,
-) -> NTv3PreTrainedConfig:
+    Keys the dataclass does not declare are dropped, so an artifact carrying
+    provenance or derived fields still loads. They are named in a warning,
+    because a misspelled field would otherwise fall back to its default with no
+    sign: a wrong crop, for one, changes no tensor shape and so passes every
+    check on the weights.
     """
-    Parse Hugging Face config.json into NTv3PreTrainedConfig.
-
-    Args:
-        config_dict: Dictionary loaded from config.json.
-        tokenizer: Tokenizer instance to get pad_token_id and mask_token_id.
-
-    Returns:
-        NTv3PreTrainedConfig instance.
-    """
-    # Handle deconv_upsample_type conversion
-    deconv_type_str = config_dict.get("deconv_upsample_type", "conv_transpose")
-    deconv_upsample_type = (
-        DeConvUpsampleType.REPEAT_CONV
-        if deconv_type_str == "repeat+conv"
-        else DeConvUpsampleType.CONV_TRANSPOSE
-    )
-
-    return NTv3PreTrainedConfig(
-        alphabet_size=config_dict.get(
-            "alphabet_size",
-            config_dict.get("vocab_size", tokenizer.vocabulary_size),
-        ),
-        pad_token_id=config_dict.get("pad_token_id", tokenizer.pad_token_id),
-        mask_token_id=config_dict.get("mask_token_id", tokenizer.mask_token_id),
-        num_downsamples=config_dict.get("num_downsamples", 8),
-        attention_heads=config_dict.get(
-            "attention_heads",
-            config_dict.get("num_attention_heads", 16),
-        ),
-        key_size=config_dict.get("key_size", None),
-        token_embed_dim=config_dict.get("token_embed_dim", 16),
-        conv_init_embed_dim=config_dict.get("conv_init_embed_dim", 512),
-        embed_dim=config_dict.get("embed_dim", config_dict.get("hidden_size", 512)),
-        ffn_embed_dim=config_dict.get(
-            "ffn_embed_dim",
-            config_dict.get("intermediate_size", 2048),
-        ),
-        num_layers=config_dict.get(
-            "num_layers",
-            config_dict.get("num_hidden_layers", 12),
-        ),
-        layer_norm_eps=config_dict.get("layer_norm_eps", 1e-5),
-        num_hidden_layers_head=config_dict.get("num_hidden_layers_head", 0),
-        use_skip_connection=config_dict.get("use_skip_connection", True),
-        deconv_upsample_type=deconv_upsample_type,
-    )
-
-
-def parse_hf_config_to_posttrained_config(
-    config_dict: dict[str, Any],
-    tokenizer: NucleotideTokenizer,
-) -> NTv3PostTrainedConfig:
-    """
-    Parse Hugging Face config.json into NTv3PostTrainedConfig.
-
-    Post-trained models add species/assembly conditioning and prediction heads.
-
-    Args:
-        config_dict: Dictionary loaded from config.json.
-        tokenizer: Tokenizer instance to get pad_token_id and mask_token_id.
-
-    Returns:
-        NTv3PostTrainedConfig instance.
-    """
-    # Parse base config
-    base_config = parse_hf_config_to_ntv3_config(config_dict, tokenizer)
-    # Extract species/assembly information
-    # Post-trained models have ONE condition: species/assembly with each assembly as a token
-    conditions_names = config_dict.get("conditions_names", None)
-    conditions_vocab_size = config_dict.get("conditions_vocab_size", None)
-
-    # Create conditioned config with species condition
-    conditioned_config = DiscreteConditionedNTv3PreTrainedConfig.from_base_config(
-        config=base_config,
-        conditions_vocab_size=conditions_vocab_size,
-        conditions_names=conditions_names,
-    )
-
-    # Extract post-trained specific fields
-    # Note: These fields are specific to post-trained models and may need
-    # refactoring if the config structure changes
-    bigwigs_per_species: dict[str, list[str]] = config_dict.get(
-        "bigwigs_per_species", {}
-    )
-    bed_elements_names: list[str] = config_dict.get("bed_elements_names", [])
-    keep_target_center_fraction = config_dict.get("keep_target_center_fraction", 1.0)
-    species_to_token_id = config_dict.get("species_to_token_id", {})
-    num_species_special_tokens = config_dict.get("num_species_special_tokens", 6)
-
-    return NTv3PostTrainedConfig.from_base_config(
-        config=conditioned_config,
-        bigwigs_per_species=bigwigs_per_species,
-        bed_elements_names=bed_elements_names,
-        species_to_token_id=species_to_token_id,
-        keep_target_center_fraction=keep_target_center_fraction,
-        num_species_special_tokens=num_species_special_tokens,
-    )
-
-
-def _convert_conv_weight(weight: np.ndarray) -> np.ndarray:
-    """Convert PyTorch Conv1d/ConvTranspose1d weight to JAX format."""
-    # PyTorch: [out_channels, in_channels, kernel_size]
-    # JAX: [kernel_size, in_channels, out_channels]
-    return weight.transpose(2, 1, 0)
-
-
-def _load_layer_norm_with_modulation(
-    model_ln: Any,
-    state_ln: Any,
-    tensors: dict[str, np.ndarray],
-    key_prefix: str,
-) -> None:
-    """
-    Load layer norm weights, with optional modulation layers for post-trained models.
-    
-    Pre-trained models: Only load scale and bias.
-    Post-trained models: Also load modulation layers that condition on species/assembly.
-    """
-    # Load basic layer norm parameters
-    state_ln.scale.value = jnp.array(tensors[f"{key_prefix}.weight"])
-    state_ln.bias.value = jnp.array(tensors[f"{key_prefix}.bias"])
-    
-    # Load modulation layers if they exist (post-trained models only)
-    if hasattr(model_ln, "modulation_layers"):
-        for j in range(len(model_ln.modulation_layers)):
-            k = tensors[f"{key_prefix}.modulation_layers.{j}.weight"]
-            state_ln.modulation_layers[j].kernel.value = jnp.array(k.T)
-            state_ln.modulation_layers[j].bias.value = jnp.array(
-                tensors[f"{key_prefix}.modulation_layers.{j}.bias"]
-            )
-
-
-def _load_conv_block(
-    model_block: Any,
-    state_block: Any,
-    tensors: dict[str, np.ndarray],
-    key_prefix: str,
-) -> None:
-    """
-    Load convolutional block: main conv + layer norm + residual conv + layer norm.
-    
-    Handles both pre-trained (no modulation) and post-trained (with modulation) models.
-    """
-    # Main conv
-    k = tensors[f"{key_prefix}.conv.conv.weight"]
-    state_block.conv.conv.kernel.value = jnp.array(_convert_conv_weight(k))
-    state_block.conv.conv.bias.value = jnp.array(tensors[f"{key_prefix}.conv.conv.bias"])
-    
-    # Layer norm in main conv (with optional modulation)
-    _load_layer_norm_with_modulation(
-        model_block.conv.layer_norm,
-        state_block.conv.layer_norm,
-        tensors,
-        f"{key_prefix}.conv.layer_norm",
-    )
-    
-    # Residual conv
-    k = tensors[f"{key_prefix}.res_conv.conv_block.conv.weight"]
-    state_block.res_conv.conv_block.conv.kernel.value = jnp.array(_convert_conv_weight(k))
-    state_block.res_conv.conv_block.conv.bias.value = jnp.array(
-        tensors[f"{key_prefix}.res_conv.conv_block.conv.bias"]
-    )
-    
-    # Layer norm in residual conv (with optional modulation)
-    _load_layer_norm_with_modulation(
-        model_block.res_conv.conv_block.layer_norm,
-        state_block.res_conv.conv_block.layer_norm,
-        tensors,
-        f"{key_prefix}.res_conv.conv_block.layer_norm",
-    )
-    
-    # Residual block modulation layers (post-trained only)
-    if hasattr(model_block.res_conv, "modulation_layers"):
-        for j in range(len(model_block.res_conv.modulation_layers)):
-            k = tensors[f"{key_prefix}.res_conv.modulation_layers.{j}.weight"]
-            state_block.res_conv.modulation_layers[j].kernel.value = jnp.array(k.T)
-            state_block.res_conv.modulation_layers[j].bias.value = jnp.array(
-                tensors[f"{key_prefix}.res_conv.modulation_layers.{j}.bias"]
-            )
-
-
-def _load_transformer_block(
-    model_block: Any,
-    state_block: Any,
-    tensors: dict[str, np.ndarray],
-    key_prefix: str,
-) -> None:
-    """
-    Load transformer block: layer norms + attention + FFN.
-    
-    Handles both pre-trained (no modulation) and post-trained (with modulation) models.
-    """
-    # Self-attention layer norm (with optional modulation)
-    _load_layer_norm_with_modulation(
-        model_block.self_attention_layer_norm,
-        state_block.self_attention_layer_norm,
-        tensors,
-        f"{key_prefix}.self_attention_layer_norm",
-    )
-    
-    # Final layer norm (with optional modulation)
-    _load_layer_norm_with_modulation(
-        model_block.final_layer_norm,
-        state_block.final_layer_norm,
-        tensors,
-        f"{key_prefix}.final_layer_norm",
-    )
-    
-    # Block-level modulation layers (post-trained only)
-    if hasattr(model_block, "modulation_layers"):
-        for j in range(len(model_block.modulation_layers)):
-            k = tensors[f"{key_prefix}.modulation_layers.{j}.weight"]
-            state_block.modulation_layers[j].kernel.value = jnp.array(k.T)
-            state_block.modulation_layers[j].bias.value = jnp.array(
-                tensors[f"{key_prefix}.modulation_layers.{j}.bias"]
-            )
-    
-    # Attention heads (query, key, value)
-    for head_name in ["query_head", "key_head", "value_head"]:
-        k = tensors[f"{key_prefix}.sa_layer.{head_name}.linear.weight"]
-        getattr(state_block.sa_layer, head_name).linear.kernel.value = jnp.array(k.T)
-        getattr(state_block.sa_layer, head_name).linear.bias.value = jnp.array(
-            tensors[f"{key_prefix}.sa_layer.{head_name}.linear.bias"]
+    accepted = {f.name for f in dataclasses.fields(config_class) if f.init}
+    if ignored := sorted(values.keys() - accepted - {"provenance"}):
+        logger.warning(
+            f"{CONFIG_FILE} keys ignored by {config_class.__name__}: {ignored}"
         )
-    
-    # Multi-head attention output
-    k = tensors[f"{key_prefix}.sa_layer.mha_output.weight"]
-    state_block.sa_layer.mha_output.kernel.value = jnp.array(k.T)
-    state_block.sa_layer.mha_output.bias.value = jnp.array(
-        tensors[f"{key_prefix}.sa_layer.mha_output.bias"]
+    return config_class(**{k: v for k, v in values.items() if k in accepted})
+
+
+def _leaf_shapes(tree: dict[str, Any]) -> dict[str, tuple[int, ...]]:
+    """Map each leaf's ``/``-joined path to its shape."""
+    flat = traverse_util.flatten_dict(tree)
+    return {"/".join(map(str, path)): np.shape(leaf) for path, leaf in flat.items()}
+
+
+def load_variables(model: nnx.Module, weights_path: Path) -> None:
+    """Restore params *and* batch statistics from a msgpack blob, in place.
+
+    The blob must match the model's variable tree exactly. ``from_state_dict``
+    only enforces that no expected key is missing: it discards tensors the model
+    has no slot for and takes a mis-shaped tensor as is, so an 11-token
+    embedding would load into a 16-token model and every lowercase base would
+    gather out of range, silently.
+
+    Raises:
+        ValueError: If the blob is missing a variable, carries one the model
+            does not have, or stores one at a different shape.
+    """
+    target = nnx.state(model, VARIABLES).to_pure_dict()
+    state = serialization.msgpack_restore(weights_path.read_bytes())
+    try:
+        restored = serialization.from_state_dict(target, state)
+    except ValueError as error:
+        raise ValueError(
+            f"{weights_path} does not match this model's variable tree. The "
+            "usual cause is an export written with a nnx.Param-only filter, "
+            "which omits the RMSBatchNorm var_ema buffers; re-export with "
+            f"filterlib.Any(nnx.Param, nnx.BatchStat). Underlying error: {error}"
+        ) from error
+
+    expected, stored = _leaf_shapes(target), _leaf_shapes(state)
+    if unexpected := sorted(stored.keys() - expected.keys()):
+        raise ValueError(
+            f"{weights_path} carries {len(unexpected)} variables this model has "
+            f"no place for, starting with {unexpected[:3]}. The weights belong to "
+            "a different model than the one configured."
+        )
+    if reshaped := {
+        path: (stored[path], shape)
+        for path, shape in expected.items()
+        if stored[path] != shape
+    }:
+        path, (found, wanted) = next(iter(reshaped.items()))
+        raise ValueError(
+            f"{weights_path} stores {len(reshaped)} variables at a shape this "
+            f"model does not expect, e.g. {path}: {found} instead of {wanted}. "
+            f"{CONFIG_FILE} does not describe these weights."
+        )
+    nnx.update(model, restored)
+
+
+def _warn_on_ones_batch_stats(model: nnx.Module) -> None:
+    """Warn when every var_ema came back at its ones-init.
+
+    ``RMSBatchNorm`` divides by ``var_ema`` in eval mode, so a model that lost
+    those buffers runs and is quietly wrong: measured on a tiny model, a 0.83
+    shift in the annotation logits.
+
+    A warning rather than an error, because an all-ones state is also what a
+    freshly initialised model legitimately has, and test fixtures are built
+    that way. The case this is really guarding -- a msgpack written with a
+    ``nnx.Param``-only filter -- is already caught hard by ``load_variables``,
+    where the key sets cannot match.
+    """
+    stats = jax.tree_util.tree_leaves(nnx.state(model, nnx.BatchStat).to_pure_dict())
+    if stats and all(bool(jnp.all(s == 1.0)) for s in stats):
+        logger.warning(
+            f"All {len(stats)} batch-statistic buffers are exactly 1.0. That is "
+            "expected for an untrained model and wrong for a released one, "
+            "where it would mean the export dropped them."
+        )
+
+
+def load_tokenizer(model_dir: Path, alphabet_size: int) -> NucleotideTokenizer:
+    """Rebuild the tokenizer, falling back to the vocabulary the size implies."""
+    config_path = model_dir / TOKENIZER_FILE
+    if config_path.exists():
+        tokenizer = BaseTokenizer.from_config(json.loads(config_path.read_text()))
+    else:
+        tokenizer = get_ntv3_tokenizer(include_softmasked_tokens=alphabet_size == 16)
+        logger.warning(f"No {TOKENIZER_FILE}; built a {alphabet_size}-token default.")
+    if tokenizer.vocabulary_size != alphabet_size:
+        raise ValueError(
+            f"Tokenizer has {tokenizer.vocabulary_size} tokens but the model "
+            f"expects {alphabet_size}. Soft-masked checkpoints need the "
+            "16-token vocabulary (get_ntv3_tokenizer(include_softmasked_tokens=True))."
+        )
+    return tokenizer  # type: ignore[return-value]
+
+
+def load_conditions_tokenizers(model_dir: Path, config: Any) -> list[BaseTokenizer]:
+    """Rebuild one tokenizer per discrete condition, in ``conditions_names`` order.
+
+    The species ids a tracks model was trained on exist nowhere but in this
+    file, and a wrong id changes every track through the FiLM-conditioned head
+    without raising. So a model that declares conditions refuses to load
+    without it, rather than loading half-usable.
+
+    Raises:
+        FileNotFoundError: If the config declares conditions and the file is
+            missing.
+        ValueError: If a condition has no tokenizer, or one whose vocabulary
+            size differs from the config's.
+    """
+    vocab_sizes = list(getattr(config, "conditions_vocab_size", None) or [])
+    if not vocab_sizes:
+        return []
+    path = model_dir / CONDITIONS_TOKENIZERS_FILE
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} not found. The config declares {len(vocab_sizes)} discrete "
+            "condition(s), and without their vocabulary no condition id can be "
+            "trusted."
+        )
+    configs = json.loads(path.read_text())["conditions_tokenizers"]
+    names = config.conditions_names or [
+        f"condition_{i}" for i in range(len(vocab_sizes))
+    ]
+    tokenizers = []
+    for name, vocab_size in zip(names, vocab_sizes, strict=True):
+        if name not in configs:
+            raise ValueError(f"{path} has no tokenizer for condition {name!r}.")
+        tokenizer = BaseTokenizer.from_config(configs[name])
+        if tokenizer.vocabulary_size != vocab_size:
+            raise ValueError(
+                f"The {name!r} tokenizer has {tokenizer.vocabulary_size} tokens "
+                f"but the model's embedding table has {vocab_size}."
+            )
+        tokenizers.append(tokenizer)
+    return tokenizers
+
+
+def resolve_model_dir(model: str | Path, *, revision: str | None = None) -> Path:
+    """Turn a released model name or a local directory into a local directory.
+
+    A released name downloads the Flax artifacts of ``RELEASED_MODELS[model]``
+    into the Hugging Face cache, or reuses them if already there.
+
+    Args:
+        model: A local directory, or a key of ``RELEASED_MODELS``.
+        revision: Branch, tag or commit of the Hub repository. Ignored for a
+            local directory.
+
+    Raises:
+        FileNotFoundError: If ``model`` is neither a directory nor a released
+            name.
+    """
+    if Path(model).is_dir():
+        return Path(model)
+    repo_id = RELEASED_MODELS.get(str(model))
+    if repo_id is None:
+        raise FileNotFoundError(
+            f"{model} is not a directory, nor one of the released models "
+            f"{sorted(RELEASED_MODELS)}."
+        )
+    # Imported here so that loading from a directory never needs it.
+    from huggingface_hub import snapshot_download
+
+    snapshot = snapshot_download(
+        repo_id,
+        revision=revision,
+        # The .npz is the export's round-trip fixture, which check_release
+        # replays: 164 KB for the pretrained model, 40 MB for tracks.
+        allow_patterns=[
+            f"{ARTIFACTS_SUBFOLDER}/*.json",
+            f"{ARTIFACTS_SUBFOLDER}/*.msgpack",
+            f"{ARTIFACTS_SUBFOLDER}/*.npz",
+        ],
     )
-    
-    # Feed-forward network
-    state_block.fc1.kernel.value = jnp.array(tensors[f"{key_prefix}.fc1.weight"].T)
-    state_block.fc2.kernel.value = jnp.array(tensors[f"{key_prefix}.fc2.weight"].T)
+    return Path(snapshot) / ARTIFACTS_SUBFOLDER
 
-def convert_pytorch_to_jax_params(
-    pytorch_model: Any,
-    model: NTv3PreTrained | NTv3PostTrained,
-) -> None:
+
+def _reject_head_fields(values: dict[str, Any], config_class: type[NTv3Config]) -> None:
+    """Refuse a config that declares heads or conditioning the class lacks.
+
+    ``parse_hyperparameters`` drops keys the dataclass does not declare, so a
+    tracks config parsed as ``NTv3Config`` would build a bare backbone.
     """
-    Convert PyTorch model state_dict to JAX params and load into model.
-    
-    Handles both pre-trained and post-trained models:
-    - Pre-trained: Base architecture only
-    - Post-trained: Base + species conditioning + bigwig/bed prediction heads
-    
-    Args:
-        pytorch_model: The PyTorch model loaded from Hugging Face.
-        model: The JAX model instance (NTv3PreTrained or NTv3PostTrained).
-    """
-    # Extract and convert state dict
-    state_dict = pytorch_model.state_dict()
-    tensors = {k: v.cpu().numpy() for k, v in state_dict.items()}
-    
-    # All models now use "core." prefix on HuggingFace
-    prefix = "core."
-    
-    # Get model's parameter state
-    state = nnx.state(model, nnx.Param)
-    
-    # Embedding layer
-    state.embed_layer.embedding.value = jnp.array(tensors[f"{prefix}embed_layer.weight"])
-    
-    # Stem (initial convolution)
-    k = tensors[f"{prefix}stem.conv.weight"]
-    state.stem.conv.kernel.value = jnp.array(_convert_conv_weight(k))
-    state.stem.conv.bias.value = jnp.array(tensors[f"{prefix}stem.conv.bias"])
-    
-    # Convolutional tower (downsampling)
-    for i, block in enumerate(model.conv_tower_blocks):
-        _load_conv_block(block, state.conv_tower_blocks[i], tensors, f"{prefix}conv_tower_blocks.{i}")
-    
-    # Deconvolutional tower (upsampling)
-    for i, block in enumerate(model.deconv_tower_blocks):
-        _load_conv_block(block, state.deconv_tower_blocks[i], tensors, f"{prefix}deconv_tower_blocks.{i}")
-    
-    # Transformer blocks
-    for i, block in enumerate(model.transformer_blocks):
-        _load_transformer_block(block, state.transformer_blocks[i], tensors, f"{prefix}transformer_blocks.{i}")
-    
-    # Language modeling head
-    k = tensors[f"{prefix}lm_head.head.weight"]
-    state.lm_head.head.kernel.value = jnp.array(k.T)
-    state.lm_head.head.bias.value = jnp.array(tensors[f"{prefix}lm_head.head.bias"])
-    
-    print("  ✓ Loaded base model weights")
-    
-
-    if isinstance(model, NTv3PostTrained):
-        # Species/assembly embeddings
-        num_conditions = len(model.conditions_embed_layers)
-        for i in range(num_conditions):
-            state.conditions_embed_layers[i].embedding.value = jnp.array(
-                tensors[f"{prefix}cond_tables.{i}.weight"]
-            )
-        
-        # Species condition heads
-        for i in range(num_conditions):
-            k = tensors[f"{prefix}conditions_heads.{i}.weight"]
-            state.conditions_heads[i].kernel.value = jnp.array(k.T)
-            state.conditions_heads[i].bias.value = jnp.array(
-                tensors[f"{prefix}conditions_heads.{i}.bias"]
-            )
-        
-        print(f"  ✓ Loaded {num_conditions} species condition embedding(s)")
-        
-        # Bigwig head (per-species prediction heads for histone marks, etc.)
-        if hasattr(model, "bigwig_head"):
-            num_species_with_bigwigs = 0
-            for i, head in enumerate(model.bigwig_head.species_heads):
-                if head is not None:
-                    head_key = f"{prefix}bigwig_head.species_heads.{i}.layer_norm.weight"
-                    if head_key in tensors:
-                        # Layer norm
-                        state.bigwig_head.species_heads[i].layer_norm.scale.value = jnp.array(
-                            tensors[f"{prefix}bigwig_head.species_heads.{i}.layer_norm.weight"]
-                        )
-                        state.bigwig_head.species_heads[i].layer_norm.bias.value = jnp.array(
-                            tensors[f"{prefix}bigwig_head.species_heads.{i}.layer_norm.bias"]
-                        )
-                        # Linear head
-                        k = tensors[f"{prefix}bigwig_head.species_heads.{i}.head.weight"]
-                        state.bigwig_head.species_heads[i].head.kernel.value = jnp.array(k.T)
-                        state.bigwig_head.species_heads[i].head.bias.value = jnp.array(
-                            tensors[f"{prefix}bigwig_head.species_heads.{i}.head.bias"]
-                        )
-                        num_species_with_bigwigs += 1
-            
-            print(f"  ✓ Loaded bigwig prediction heads for {num_species_with_bigwigs} species")
-        
-        # BED head (genomic element classification)
-        if hasattr(model, "bed_head"):
-            # Layer norm
-            state.bed_head.layer_norm.scale.value = jnp.array(
-                tensors[f"{prefix}bed_head.layer_norm.weight"]
-            )
-            state.bed_head.layer_norm.bias.value = jnp.array(
-                tensors[f"{prefix}bed_head.layer_norm.bias"]
-            )
-            # Linear head
-            k = tensors[f"{prefix}bed_head.head.weight"]
-            state.bed_head.head.kernel.value = jnp.array(k.T)
-            state.bed_head.head.bias.value = jnp.array(tensors[f"{prefix}bed_head.head.bias"])
-            
-            num_bed_elements = len(model.config.bed_elements_names)
-            print(f"  ✓ Loaded BED element classification head ({num_bed_elements} elements)")
-    
-    # Update the model with loaded weights
-    nnx.update(model, state)
-    print(f"✓ Model loaded successfully\n")
+    accepted = {f.name for f in dataclasses.fields(config_class) if f.init}
+    tracks_only = {
+        f.name
+        for f in dataclasses.fields(DiscreteConditionedNTv3WithTracksHeadsConfig)
+        if f.init
+    }
+    if foreign := sorted((tracks_only - accepted) & values.keys()):
+        raise ValueError(
+            f"{CONFIG_FILE} declares {foreign[:3]}, which {config_class.__name__} "
+            "cannot build. These are tracks or annotation weights; load them "
+            "with load_tracks_model or load_annotation_model."
+        )
 
 
-def set_bfloat16_dtypes(cfg: NTv3PreTrainedConfig | NTv3PostTrainedConfig) -> None:
-    """Mutate Flax config in-place: all *compute* and *param* dtypes -> bfloat16."""
-    cfg.embedding_param_dtype = "bfloat16"
-    cfg.embedding_compute_dtype = "bfloat16"
-    cfg.stem_param_dtype = "bfloat16"
-    cfg.stem_compute_dtype = "bfloat16"
-    cfg.down_convolution_param_dtype = "bfloat16"
-    cfg.down_convolution_compute_dtype = "bfloat16"
-    cfg.up_convolution_param_dtype = "bfloat16"
-    cfg.up_convolution_compute_dtype = "bfloat16"
-    cfg.layernorm_param_dtype = "bfloat16"
-    cfg.layernorm_compute_dtype = "bfloat16"
-    cfg.transformer_qkvo_param_dtype = "bfloat16"
-    cfg.transformer_qkvo_compute_dtype = "bfloat16"
-    cfg.transformer_ffn_param_dtype = "bfloat16"
-    cfg.transformer_ffn_compute_dtype = "bfloat16"
-    cfg.lmhead_param_dtype = "bfloat16"
-    cfg.lmhead_compute_dtype = "bfloat16"
-    cfg.modulation_param_dtype = "bfloat16"
-    cfg.modulation_compute_dtype = "bfloat16"
+def _load(
+    model: str | Path,
+    *,
+    model_class: type[NTv3],
+    config_class: type[NTv3Config],
+    use_bf16_compute: bool,
+    revision: str | None,
+) -> tuple[Any, NucleotideTokenizer, list[BaseTokenizer]]:
+    """Load a model of ``model_class`` and its tokenizers."""
+    model_dir = resolve_model_dir(model, revision=revision)
+    config_path, weights_path = model_dir / CONFIG_FILE, model_dir / WEIGHTS_FILE
+    for path in (config_path, weights_path):
+        if not path.exists():
+            raise FileNotFoundError(f"{path} not found in {model_dir}")
 
-def get_pretrained_ntv3_model(
-    model_name: str,
-    embeddings_layers_to_save: tuple[int, ...] = (),
-    attention_maps_to_save: tuple[tuple[int, int], ...] = (),
-    deconv_layers_to_save: tuple[int, ...] = (),
-    use_bfloat16: bool = False,
-) -> tuple[NTv3PreTrained, NucleotideTokenizer, NTv3PreTrainedConfig]:
-    """
-    Download and load a pre-trained NTv3 model from Hugging Face.
-    
-    Pre-trained models are trained on DNA sequences for masked language modeling.
+    values = json.loads(config_path.read_text())
+    _reject_head_fields(values, config_class)
+    config = parse_hyperparameters(values, config_class=config_class)
+    tokenizer = load_tokenizer(model_dir, config.alphabet_size)
+    conditions_tokenizers = load_conditions_tokenizers(model_dir, config)
+
+    loaded = model_class(config=config, rngs=nnx.Rngs(0))
+    loaded.eval()
+    load_variables(loaded, weights_path)
+    _warn_on_ones_batch_stats(loaded)
+
+    if use_bf16_compute:
+        loaded = build_bf16_compute_model(loaded)
+        loaded.eval()
+    return loaded, tokenizer, conditions_tokenizers
+
+
+def load_pretrained_model(
+    model_dir: str | Path,
+    *,
+    use_bf16_compute: bool = True,
+    revision: str | None = None,
+) -> tuple[NTv3, NucleotideTokenizer]:
+    """Load a pretrained NTv3 backbone and its tokenizer.
+
+    The backbone always carries its LM head, so ``model(tokens)["logits"]`` is
+    available; pass ``skip_lm_head=True`` when only embeddings are wanted.
+
+    Its 11-token vocabulary has no lowercase bases: soft-masked sequence
+    tokenizes to ``<unk>``, so uppercase it first.
 
     Args:
-        model_name: Model name (e.g., "NTv3_8M_pre").
-        embeddings_layers_to_save: Transformer layer indices to save embeddings for.
-        attention_maps_to_save: Attention maps to save as (layer, head) tuples.
-        deconv_layers_to_save: Deconv layer indices to save embeddings for.
-        use_bfloat16: Whether to use bfloat16 for the model.
+        model_dir: Directory holding the artifacts listed in the module
+            docstring, or a released name such as ``"NTv3_pretrained"``.
+        use_bf16_compute: Rebuild with bfloat16 compute dtypes. Parameter
+            storage stays as exported.
+        revision: Hub revision, when ``model_dir`` is a released name.
 
     Returns:
-        Tuple of (model, tokenizer, config).
+        The model in eval mode, and its sequence tokenizer. Its ``provenance``
+        block, which the config dataclass does not carry, is available from
+        :func:`read_provenance`.
 
-    Example:
-        >>> model, tokenizer, config = get_pretrained_ntv3_model(
-        ...     model_name="NTv3_8M_pre",
-        ...     embeddings_layers_to_save=(5, 10),
-        ... )
+    Raises:
+        FileNotFoundError: If the config or weights file is missing.
+        ValueError: If the artifacts carry tracks heads or conditioning, if the
+            tokenizer disagrees with the model, or if the weights do not match
+            the model's variable tree.
     """
-    assert model_name in SUPPORTED_PRETRAINED_MODEL_LIST, f"Model {model_name} not supported"
-    
-    # Load PyTorch model and config
-    pytorch_model = AutoModelForMaskedLM.from_pretrained(
-        f"InstaDeepAI/{model_name}", trust_remote_code=True
+    model, tokenizer, _ = _load(
+        model_dir,
+        model_class=NTv3,
+        config_class=NTv3Config,
+        use_bf16_compute=use_bf16_compute,
+        revision=revision,
     )
-    config_dict = pytorch_model.config.to_dict()
-
-    # Get tokenizer
-    tokenizer = get_ntv3_tokenizer()
-
-    # Parse config
-    config = parse_hf_config_to_ntv3_config(config_dict, tokenizer)
-
-    # Update config with layer save options
-    config.embeddings_layers_to_save = embeddings_layers_to_save
-    config.attention_maps_to_save = list(attention_maps_to_save)
-    config.deconv_layers_to_save = deconv_layers_to_save
-
-    if use_bfloat16:
-        set_bfloat16_dtypes(config)
-
-    # Create and load model
-    rngs = nnx.Rngs(0)
-    model = NTv3PreTrained(config=config, rngs=rngs)
-    convert_pytorch_to_jax_params(pytorch_model, model)
-
-    return model, tokenizer, config
+    logger.info(
+        f"Loaded {model_dir}: pretrained backbone, "
+        f"alphabet {model.config.alphabet_size}, bf16={use_bf16_compute}."
+    )
+    return model, tokenizer
 
 
-def get_posttrained_ntv3_model(
-    model_name: str,
-    embeddings_layers_to_save: tuple[int, ...] = (),
-    attention_maps_to_save: tuple[tuple[int, int], ...] = (),
-    deconv_layers_to_save: tuple[int, ...] = (),
-    use_bfloat16: bool = False,
-) -> tuple[NTv3PostTrained, NucleotideTokenizer, NTv3PostTrainedConfig]:
-    """
-    Download and load a post-trained NTv3 model from Hugging Face.
+def load_tracks_model(
+    model_dir: str | Path,
+    *,
+    use_bf16_compute: bool = True,
+    revision: str | None = None,
+) -> tuple[
+    DiscreteConditionedNTv3WithTracksHeads, NucleotideTokenizer, list[BaseTokenizer]
+]:
+    """Load an NTv3 functional-tracks model and its tokenizers.
 
-    Post-trained models extend pre-trained NTv3 with:
-    - Species/assembly conditioning via adaptive layer normalization
-    - Bigwig prediction heads (histone modifications, chromatin accessibility, etc.)
-    - BED element classification head (regulatory element prediction)
+    The bigwig head is ``number_bigwig_tracks`` wide at 1 bp resolution, so a
+    forward pass without ``track_indices`` materialises the whole panel. At the
+    released 7362 tracks and a 1 Mb window that is the difference between a
+    working call and an out-of-memory error.
+
+    The model takes one condition token per example and condition, in
+    ``config.conditions_names`` order, and the returned condition tokenizers
+    come in that same order. For the released model that is a single
+    ``species`` condition: ``conditions_tokenizers[0].token_to_id("human")``.
 
     Args:
-        model_name: Model name (e.g., "NTv3_100M_post").
-        embeddings_layers_to_save: Transformer layer indices to save embeddings for.
-        attention_maps_to_save: Attention maps to save as (layer, head) tuples.
-        deconv_layers_to_save: Deconv layer indices to save embeddings for.
-        use_bfloat16: Whether to use bfloat16 for the model.
+        model_dir: Directory holding the artifacts listed in the module
+            docstring, or a released name such as ``"NTv3_tracks"``.
+        use_bf16_compute: Rebuild with bfloat16 compute dtypes. Parameter
+            storage stays as exported, and the bigwig head keeps float32
+            compute.
+        revision: Hub revision, when ``model_dir`` is a released name.
 
     Returns:
-        Tuple of (model, tokenizer, config).
+        The model in eval mode, its sequence tokenizer, and one tokenizer per
+        discrete condition.
 
-    Example:
-        >>> model, tokenizer, config = get_posttrained_ntv3_model(
-        ...     model_name="NTv3_100M_post",
-        ... )
-        >>> species_tokens = model.encode_species("human")
+    Raises:
+        FileNotFoundError: If the config, weights or condition tokenizers file
+            is missing.
+        ValueError: If the artifacts carry no bigwig head, declare a conditioned
+            bigwig head with no conditioning to feed it, disagree with the
+            tokenizer, or do not match the model's variable tree.
     """
-    assert model_name in SUPPORTED_POSTTRAINED_MODEL_LIST, f"Model {model_name} not supported"
-
-    # Load PyTorch model and config
-    pytorch_model = AutoModel.from_pretrained(
-        f"InstaDeepAI/{model_name}", trust_remote_code=True
+    model, tokenizer, conditions_tokenizers = _load(
+        model_dir,
+        model_class=DiscreteConditionedNTv3WithTracksHeads,
+        config_class=DiscreteConditionedNTv3WithTracksHeadsConfig,
+        use_bf16_compute=use_bf16_compute,
+        revision=revision,
     )
-    config_dict = pytorch_model.config.to_dict()
-    
-    tokenizer = get_ntv3_tokenizer()
-    
-    # Parse config
-    config = parse_hf_config_to_posttrained_config(config_dict, tokenizer)
+    config = model.config
+    if not config.number_bigwig_tracks:
+        raise ValueError(
+            "These artifacts declare no bigwig tracks. A genome-annotation "
+            "checkpoint loads with load_annotation_model."
+        )
+    # The species embedding reaches the bigwig head through FiLM. A config that
+    # claims a conditioned head but has no condition tables is an export that
+    # dropped them in both places, which loads cleanly and predicts wrong.
+    if config.condition_bigwig_head and not config.conditions_vocab_size:
+        raise ValueError(
+            "condition_bigwig_head is set but conditions_vocab_size is empty: "
+            "the export dropped the species conditioning the bigwig head consumes."
+        )
+    logger.info(
+        f"Loaded {model_dir}: {config.number_bigwig_tracks} bigwig "
+        f"tracks, alphabet {config.alphabet_size}, "
+        f"crop {config.keep_target_center_fraction}, bf16={use_bf16_compute}."
+    )
+    return model, tokenizer, conditions_tokenizers
 
-    # Update config with layer save options
-    config.embeddings_layers_to_save = embeddings_layers_to_save
-    config.attention_maps_to_save = list(attention_maps_to_save)
-    config.deconv_layers_to_save = deconv_layers_to_save
 
-    if use_bfloat16:
-        set_bfloat16_dtypes(config)
+def read_provenance(
+    model_dir: str | Path, *, revision: str | None = None
+) -> dict[str, Any]:
+    """The ``provenance`` block an export records in its hyperparameters.
 
-    # Create and load model
-    rngs = nnx.Rngs(0)
-    model = NTv3PostTrained(config=config, rngs=rngs)
-    convert_pytorch_to_jax_params(pytorch_model, model)
+    Kept out of the model config on purpose: ``parse_hyperparameters`` keeps
+    only the fields the config dataclass declares, and provenance is not one
+    of them. It carries two things nothing else does -- which released model
+    these weights are an export of, and the crop the head was *trained* at,
+    which is not the crop it is *served* at.
 
-    return model, tokenizer, config
+    Args:
+        model_dir: Directory of artifacts, or a released name.
+        revision: Hub revision, when ``model_dir`` is a released name.
 
+    Returns:
+        The provenance block, or an empty dict for an export without one.
+    """
+    config_path = resolve_model_dir(model_dir, revision=revision) / CONFIG_FILE
+    values: dict[str, Any] = json.loads(config_path.read_text())
+    provenance = values.get("provenance", {})
+    return provenance if isinstance(provenance, dict) else {}
+
+
+def load_annotation_model(
+    model_dir: str | Path,
+    *,
+    use_bf16_compute: bool = True,
+    revision: str | None = None,
+) -> tuple[DiscreteConditionedNTv3WithTracksHeads, NucleotideTokenizer]:
+    """Load a genome-annotation model and its tokenizer.
+
+    Args:
+        model_dir: Directory holding the artifacts listed in the module
+            docstring, or a released name such as ``"NTv3_annot_mammals"``.
+        use_bf16_compute: Rebuild with bfloat16 compute dtypes. Parameter
+            storage stays as exported.
+        revision: Hub revision, when ``model_dir`` is a released name.
+
+    Returns:
+        The model in eval mode, and its sequence tokenizer.
+
+    Raises:
+        FileNotFoundError: If the config or weights file is missing.
+        ValueError: If the artifacts carry no genome-annotation (BED) head, if
+            the tokenizer disagrees with the model, or if the weights do not
+            match the model's variable tree. Batch statistics that are all at
+            their ones-init only warn, since that is also a fresh model's state.
+    """
+    model, tokenizer, _ = _load(
+        model_dir,
+        model_class=DiscreteConditionedNTv3WithTracksHeads,
+        config_class=DiscreteConditionedNTv3WithTracksHeadsConfig,
+        use_bf16_compute=use_bf16_compute,
+        revision=revision,
+    )
+    config = model.config
+    if not config.bed_elements_names:
+        raise ValueError(
+            "These artifacts declare no genome-annotation elements. A tracks "
+            "checkpoint loads with load_tracks_model."
+        )
+    logger.info(
+        f"Loaded {model_dir}: {config.bed_num_classes}-class annotation head, "
+        f"alphabet {config.alphabet_size}, "
+        f"crop {config.keep_target_center_fraction}, bf16={use_bf16_compute}."
+    )
+    return model, tokenizer
+
+
+def count_parameters(model: nnx.Module) -> int:
+    """Total number of scalar parameters, for reporting."""
+    leaves = jax.tree_util.tree_leaves(nnx.state(model, nnx.Param).to_pure_dict())
+    return int(sum(np.prod(np.shape(leaf)) for leaf in leaves))

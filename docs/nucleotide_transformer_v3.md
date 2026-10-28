@@ -402,7 +402,7 @@ so what is compared is the representation rather than the training recipe.
 - ✅ Two kinds of generalization: held-out assays in species NTv3-tracks saw, and seven genomes absent from post-training entirely
 - ✅ Constructed under strict data-leakage controls relative to the post-training corpus
 
-### 🚀 [Try NTv3 Benchmark on Hugging Face](https://huggingface.co/spaces/InstaDeepAI/ntv3_benchmark_revised)
+### 🚀 [Try NTv3 Benchmark on Hugging Face](https://huggingface.co/spaces/InstaDeepAI/ntv3_benchmark)
 
 <p align="center">
   <img src="../imgs/ntv3_benchmark.png" alt="NTv3 Benchmark: every model on every species" width="850">

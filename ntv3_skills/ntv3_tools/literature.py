@@ -277,7 +277,7 @@ def _is_primary_source_url(source_url: str) -> bool:
     path = parsed.path.lower()
     if hostname == "doi.org":
         return bool(_DOI_PATTERN.fullmatch(path.lstrip("/")))
-    if "pubmed.ncbi.nlm.nih.gov" in hostname:
+    if hostname == "pubmed.ncbi.nlm.nih.gov":
         return bool(re.fullmatch(r"/\d+/?", path))
     return path not in {"", "/"}
 

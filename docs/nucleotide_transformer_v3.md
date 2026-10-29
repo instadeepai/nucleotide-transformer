@@ -415,11 +415,12 @@ so what is compared is the representation rather than the training recipe.
 ## 📚 Citing Our Work
 
 ```bibtex
-@article{ntv3_2025,
-  title={A foundational model for joint sequence-function multi-species modeling at scale for long-range genomic prediction},
-  author={Boshar, Sam and Evans, Benjamin and Tang, Ziqi and Picard, Armand and Adel, Yanis and Lorbeer, Franziska K. and Rajesh, Chandana and Karch, Tristan and Sidbon, Shawn and Emms, David and Mendoza-Revilla, Javier and Al-Ani, Fatimah and Seitz, Evan and Schiff, Yair and Bornachot, Yohan and Hernandez, Ariana and Lopez, Marie and Laterre, Alexandre and Beguir, Karim and Koo, Peter and Kuleshov, Volodymyr and Stark, Alexander and de Almeida, Bernardo P. and Pierrot, Thomas},
+@article{ntv3,
+  title={A multispecies foundation model for genome function prediction, gene annotation and sequence design},
+  author={Boshar, Sam and Evans, Benjamin and Tang, Ziqi and Adel, Yanis and Bornachot, Yohan and Sidbon, Shawn and Lorbeer, Franziska K. and Picard, Armand and Rajesh, Chandana and Seitz, Evan and Emms, David and Mendoza-Revilla, Javier and Hernandez, Ariana and Al-Ani, Fatimah and Karch, Tristan and Schiff, Yair and Lopez, Marie and Laterre, Alexandre and Beguir, Karim and Koo, Peter and Kuleshov, Volodymyr and Stark, Alexander and de Almeida, Bernardo P. and Pierrot, Thomas},
   journal={bioRxiv},
-  year={2025},
+  year={2026},
+  doi={10.64898/2025.12.22.695963},
   url={https://www.biorxiv.org/content/10.64898/2025.12.22.695963}
 }
 ```

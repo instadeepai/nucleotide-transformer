@@ -134,9 +134,10 @@ downloaded into the Hugging Face cache on first use:
 download also fetches the export's `roundtrip_fixture.npz` (164 KB for the
 pretrained model, 40 MB for tracks), which `check_release` replays.
 
-The same repositories carry the PyTorch weights at their root. They are gated:
-request access on any of their Hub pages, where one approval covers all of them,
-then run `huggingface-cli login`.
+The same repositories carry the PyTorch weights at their root. They are gated
+under the [InstaDeep Open Model Licence](../MODEL-LICENSE.md), for non-commercial
+use only: request access on any of their Hub pages, where one approval covers all
+of them, then run `huggingface-cli login`.
 
 Every loader also takes a local directory holding those files, and a
 `revision=` to pin a Hub commit. Loading from a directory never imports

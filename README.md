@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="./LICENSE"> <img src="https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-blue.svg" alt="License: CC BY-NC-SA 4.0">
+  <a href="./LICENSE.md"> <img src="https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-blue.svg" alt="License: CC BY-NC-SA 4.0">
   </a>
   <a href="https://docs.python.org/3.8/library/index.html">
     <img src="https://img.shields.io/badge/python-3.11-blue.svg" alt="Python 3.8">
@@ -215,6 +215,11 @@ To begin using models from this repository:
     ```
 
 For detailed instructions on individual models, including specific dependencies, downloading pre-trained weights, and Python usage examples, please refer to their dedicated documentation pages linked in the "Featured Models & Research Evolutions" section above (e.g., `./docs/nucleotide_transformer.md`).
+
+## ⚖️ Licences
+
+* **Code:** [CC BY-NC-SA 4.0](./LICENSE.md).
+* **NTv3 model weights:** the [InstaDeep Open Model Licence](./MODEL-LICENSE.md), for non-commercial use only. You can read it here before requesting access to the gated models on Hugging Face.
 
 ## 🤝 Community & Support
 
